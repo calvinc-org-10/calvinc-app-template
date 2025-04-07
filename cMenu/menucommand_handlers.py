@@ -23,7 +23,7 @@ from .database import cMenuDatabase
 from .dbmenulist import (MenuRecords, newgroupnewmenu_menulist, newmenu_menulist, )
 from sysver import sysver
 from .menucommand_constants import MENUCOMMANDS, COMMANDNUMBER
-from .models import (menuItems, menuGroups, )
+from .models import (menuItems, tblName_menuItems, menuGroups, tblName_menuGroups, )
 from .utils import (cComboBoxFromDict, cQFmFldWidg, cQFmNameLabel, QRawSQLTableModel, cQFmNameLabel,
     cQSqlTableModel, cQSqlRelationalTableModel, 
     UnderConstruction_Dialog, areYouSure,
@@ -392,8 +392,8 @@ class cMRunSQL(QWidget):
 
 class cWidgetMenuItem(QWidget):
     _db = cMenuDatabase
-    _menuItemstblName = 'cMenu_menuitems'
-    _menuGrouptblName = 'cMenu_menugroups'
+    _menuItemstblName = tblName_menuItems
+    _menuGrouptblName = tblName_menuGroups
     formFields:Dict[str, QWidget] = {}
 
     requestMenuReload:Signal = Signal()

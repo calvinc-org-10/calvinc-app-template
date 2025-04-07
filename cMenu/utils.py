@@ -703,16 +703,24 @@ class cQFmNameLabel(QLabel):
 ##################################################
 ##################################################
 
+def tblExists(tblName:str, db:QSqlDatabase = QSqlDatabase.database()) -> Tuple[bool, bool]:
+    if db.isOpen():
+        return (True, tblName in db.tables())
+    else:
+        return (False, False)
+    #endif db.isOpen()
+        
 
 class cQSqlTableModel(QSqlTableModel):
     retListofQSQLRecord = -1
     def __init__(self, tblName:str, db:QSqlDatabase = QSqlDatabase.database(), parent:QObject = None):
+        if not all(tblExists(tblName, db)):
+            raise RuntimeError(f'either database {db} is not open or table {tblName} does not exist')
         super().__init__(parent, db)
         self.setTable(tblName)
-        # why does setEditStrategy crash?
         self.setEditStrategy(QSqlTableModel.EditStrategy.OnManualSubmit)    # think about this - pass as parm?
         self.select()
-    
+
     def recordsetList(self, retFlds:int|List[str] = retListofQSQLRecord, filter:str = None) -> List:
         retList = []
         if filter:
@@ -736,6 +744,8 @@ class cQSqlTableModel(QSqlTableModel):
 class cQSqlRelationalTableModel(QSqlRelationalTableModel):
     retListofQSQLRecord = -1
     def __init__(self, tblName:str, db:QSqlDatabase = QSqlDatabase.database(), parent:QObject = None):
+        if not all(tblExists(tblName, db)):
+            raise RuntimeError(f'either database {db} is not open or table {tblName} does not exist')
         super().__init__(parent, db)
         self.setTable(tblName)
         # why does setEditStrategy crash?

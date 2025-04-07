@@ -1,7 +1,8 @@
 import PySide6
 from PySide6.QtSql import (QSqlDatabase, QSqlQuery )
 
-cMenu_dbName = "D:\\AppDev\\datasets\\hbl.sqlite"
+# cMenu_dbName = "D:\\AppDev\\datasets\\hbl.sqlite"
+cMenu_dbName = "F:\\calvinc-app-template\\cMenudb.sqllite"
 
 
 class cMenudb:

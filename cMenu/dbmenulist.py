@@ -99,44 +99,41 @@ newmenu_menulist = [
 # from .models import menuItems
 from PySide6.QtSql import (QSqlRelationalTableModel, QSqlRelation, QSqlTableModel, QSqlQueryModel, QSqlRecord, QSqlQuery,  )
 from .database import cMenuDatabase
+from .models import menuItems
 
-class MenuRecords(QSqlRelationalTableModel):
-# class MenuRecords(QSqlQueryModel):
-    # mSource = menuItems.objects
-    _tblName = 'cMenu_menuitems'
-    _groupKey = 'MenuGroup_id'
-    _rltblName = 'cMenu_menuGroups'
-    _db = cMenuDatabase
-    # _theQuery = f"""
-    #     SELECT 
-    #         t.*,
-    #         r.GroupName
-    #     FROM {_tblName} t
-    #       LEFT JOIN {_rltblName} r ON t.MenuGroup_id = r.id
-    # """
-    
+# class MenuRecords(QSqlRelationalTableModel):
+# # class MenuRecords(QSqlQueryModel):
+#     # mSource = menuItems.objects
+#     _tblName = 'cMenu_menuitems'
+#     _groupKey = 'MenuGroup_id'
+#     _rltblName = 'cMenu_menuGroups'
+#     _db = cMenuDatabase
+#     # _theQuery = f"""
+#     #     SELECT 
+#     #         t.*,
+#     #         r.GroupName
+#     #     FROM {_tblName} t
+#     #       LEFT JOIN {_rltblName} r ON t.MenuGroup_id = r.id
+#     # """
+class MenuRecords(menuItems):
     def __init__(self, parent = None, db = None):
-        if db is None:
-            db = self._db
-        super().__init__(parent, db)
         # if db is None:
-        #     super().__init__(parent)
-        # else:
-        #     super().__init__(parent, db)
-        self.setTable(self._tblName)
-        self.setEditStrategy(QSqlTableModel.EditStrategy.OnManualSubmit)    # think about this - pass as parm?
-        self.setRelation(self.fieldIndex(self._groupKey), QSqlRelation(self._rltblName, 'id', 'GroupName'))
+        #     db = self._db
+        super().__init__(parent)
+        # self.setTable(self._tblName)
+        # self.setEditStrategy(QSqlTableModel.EditStrategy.OnManualSubmit)    # think about this - pass as parm?
+        # self.setRelation(self.fieldIndex(self._groupKey), QSqlRelation(self._rltblName, 'id', 'GroupName'))
         
         self.select()
 
-    def selectStatement(self):
-        base_sql = super().selectStatement()
-        # Inject your extra field (example: calculated field)
-        # Warning: This is fragile if the base class changes its SQL format
-        return base_sql.replace(
-            " FROM ",
-            f", {self._groupKey} FROM "
-        )
+    # def selectStatement(self):
+    #     base_sql = super().selectStatement()
+    #     # Inject your extra field (example: calculated field)
+    #     # Warning: This is fragile if the base class changes its SQL format
+    #     return base_sql.replace(
+    #         " FROM ",
+    #         f", {self._groupKey} FROM "
+    #     )
 
 
     def menuAttr(self, mGroup:int, mID:int, Opt:int, AttrName:str) -> Any:
@@ -178,7 +175,7 @@ class MenuRecords(QSqlRelationalTableModel):
         #     )[0]
     
     def dfltMenuGroup(self) -> int:
-        sqlstmnt = f'SELECT MIN(MenuGroup_id) as dfltGroup FROM {self._tblName}'
+        sqlstmnt = f'SELECT MIN(MenuGroup_id) as dfltGroup FROM {self.tblName}'
         tmpQuery = QSqlQuery(sqlstmnt, self._db)
         tmpQuery.first()
         return tmpQuery.record().field('dfltGroup').value()
@@ -211,7 +208,7 @@ class MenuRecords(QSqlRelationalTableModel):
         #     }
     
     def menuExist(self, mGroup:int, mID:int) ->  bool:
-        sqlstmnt = f'SELECT 1 FROM {self._tblName} WHERE MenuGroup_id={mGroup} AND MenuID={mID} AND OptionNumber=0'
+        sqlstmnt = f'SELECT 1 FROM {self.tblName} WHERE MenuGroup_id={mGroup} AND MenuID={mID} AND OptionNumber=0'
         tmpQuery = QSqlQuery(sqlstmnt, self._db)
         return tmpQuery.first()
         # return self.filter(MenuGroup=mGroup,MenuID=mID,OptionNumber=0).exists()
