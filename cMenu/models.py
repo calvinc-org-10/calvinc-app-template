@@ -49,30 +49,43 @@ class menuGroups(cQSqlTableModel):
 
             # create a default menu
             # newgroupnewmenu_menulist to menuItems
-            dbTbl = menuItems()
-            dbTbl.setFilter('FALSE')
-            dbTbl.select()
-            for rec in newgroupnewmenu_menulist:
-                newmenurec = dbTbl.record()
-                newmenurec.setNull('id')
-                newmenurec.setValue('MenuGroup_id', grppk)
-                newmenurec.setValue('MenuID', 0)
-                for fldNm, vlu in rec.items():
-                    newmenurec.setValue(fldNm, vlu)
-                dbTbl.insertRecord(0, newmenurec)
-            newmenurec = dbTbl.record()
-            newmenurec.setNull('id')
-            newmenurec.setValue('MenuGroup_id', grppk)
-            newmenurec.setValue('MenuID', 0)
-            newmenurec.setValue('OptionNumber', 11)
-            newmenurec.setValue('OptionText', 'Edit Menu')
-            newmenurec.setValue('Command', COMMANDNUMBER.EditMenu)
-            newmenurec.setValue('Argument', '')
-            newmenurec.setValue('PWord', '')
-            dbTbl.insertRecord(0, newmenurec)
             
-            if not dbTbl.submitAll():
-                print("Failed to submit changes:", dbTbl.lastError().text())
+            # the new version - clean up
+            menuItems()     # force menuItems to be created
+            query = QSqlQuery(cMenuDatabase)
+            query.exec(f'''
+                INSERT INTO {tblName_menuItems} (MenuGroup_id,MenuID,OptionNumber,OptionText,Command,Argument,PWord,TopLine,BottomLine) VALUES
+                    ({grppk},0,0,'New Menu',NULL,'Default','',1,1),
+                    ({grppk},0,11,'Edit Menu',{COMMANDNUMBER.EditMenu},'','',NULL,NULL),
+                    ({grppk},0,19,'Change Password',{COMMANDNUMBER.ChangePW},'','',NULL,NULL),
+                    ({grppk},0,20,'Go Away!',{COMMANDNUMBER.ExitApplication},'','',NULL,NULL);
+                ''')
+            
+            # the old version 
+            # dbTbl = menuItems()
+            # dbTbl.setFilter('FALSE')
+            # dbTbl.select()
+            # for rec in newgroupnewmenu_menulist:
+            #     newmenurec = dbTbl.record()
+            #     newmenurec.setNull('id')
+            #     newmenurec.setValue('MenuGroup_id', grppk)
+            #     newmenurec.setValue('MenuID', 0)
+            #     for fldNm, vlu in rec.items():
+            #         newmenurec.setValue(fldNm, vlu)
+            #     dbTbl.insertRecord(0, newmenurec)
+            # newmenurec = dbTbl.record()
+            # newmenurec.setNull('id')
+            # newmenurec.setValue('MenuGroup_id', grppk)
+            # newmenurec.setValue('MenuID', 0)
+            # newmenurec.setValue('OptionNumber', 11)
+            # newmenurec.setValue('OptionText', 'Edit Menu')
+            # newmenurec.setValue('Command', COMMANDNUMBER.EditMenu)
+            # newmenurec.setValue('Argument', '')
+            # newmenurec.setValue('PWord', '')
+            # dbTbl.insertRecord(0, newmenurec)
+            
+            # if not dbTbl.submitAll():
+            #     print("Failed to submit changes:", dbTbl.lastError().text())
 
     def _createtable(self):
         query = QSqlQuery(cMenuDatabase)
@@ -122,7 +135,7 @@ class menuItems(cQSqlRelationalTableModel):
 
     def _createtable(self):
         if not all(tblExists(self._rltblName, cMenuDatabase)):
-            dummycreate = menuGroups()  # will create if doesn't exist
+            menuGroups()  # will create if doesn't exist
         query = QSqlQuery(cMenuDatabase)
         query.exec(f'''
             CREATE TABLE IF NOT EXISTS "{self.tblName}" (
