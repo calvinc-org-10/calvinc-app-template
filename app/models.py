@@ -8,7 +8,7 @@ from datetime import datetime, date
 
 from PySide6.QtCore import QAbstractTableModel, Qt, QModelIndex
 
-from cMenu.utils import QDjangoTableModel
+# from cMenu.utils import QDjangoTableModel
 
 # standard sizes for decimal fields
 HunThouMoney2Dec = {'max_digits':  8, 'decimal_places': 2}

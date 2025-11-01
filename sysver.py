@@ -1,3 +1,4 @@
+_appname='Calvin C app prototype'
 _base_ver_major=1
 _base_ver_minor=0
 _base_ver_patch=0

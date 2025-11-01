@@ -7,7 +7,7 @@ from cMenu.cMenu import cMenu
 
 
 class MainScreen(QWidget):
-    def __init__(self, parent:QWidget = None):
+    def __init__(self, parent = None):
         super().__init__(parent)
         if not self.objectName():
             self.setObjectName(u"MainWindow")

@@ -1,1 +1,1 @@
-Calvin C prototype menu system
+Calvin C prototype menu system, utilities and application framework

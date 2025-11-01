@@ -1,81 +1,24 @@
-from typing import (Any, Dict, List, )
+from typing import (Any, Dict, List, Optional, )
+
+from sqlalchemy import Row, RowMapping, Select, Table, select, text
 
 from .menucommand_constants import (MENUCOMMANDS, COMMANDNUMBER, )
+from .database import cMenu_Session
+
+from .utils import (retListofQSQLRecord, recordsetList, select_with_join_excluding, )
 
 # self, menuID: str, menuName: str, menuItems:Dict[int,Dict]):
 # {'keys': {'MenuGroup': 1, 'MenuID': 0, 'OptionNumber': 0}, 
 #     'values': {etc}}
-test_menulist = [
-{'keys': {'MenuGroup': 1, 'MenuID': 0, 'OptionNumber': 0},
-    'values': {'OptionText': 'Admin Menu', 'Command': None, 'Argument': '', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 0, 'OptionNumber': 1},
-    'values': {'OptionText': 'User Admin', 'Command': 11, 'Argument': 'L10-WICS-UAdmin', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 0, 'OptionNumber': 2},
-    'values': {'OptionText': 'Edit Menu', 'Command': 91, 'Argument': '', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 0, 'OptionNumber': 3},
-    'values': {'OptionText': 'Django Admin', 'Command': 11, 'Argument': 'django-admin', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 0, 'OptionNumber': 11},
-    'values': {'OptionText': 'IncShip', 'Command': 1, 'Argument': '5', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 0, 'OptionNumber': 19},
-    'values': {'OptionText': 'Change Password', 'Command': 51, 'Argument': '', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 0, 'OptionNumber': 20},
-    'values': {'OptionText': 'Go Away!', 'Command': 200, 'Argument': '', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 0},
-    'values': {'OptionText': 'Calvin\'s Menu', 'Command': None, 'Argument': '', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 4},
-    'values': {'OptionText': 'new reference', 'Command': 11, 'Argument': 'newref', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 1},
-    'values': {'OptionText': 'HBL', 'Command': 11, 'Argument': 'HBLForm', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 3},
-    'values': {'OptionText': 'references', 'Command': 11, 'Argument': 'refsForm', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 6},
-    'values': {'OptionText': 'Invoices', 'Command': 11, 'Argument': 'InvoiceForm', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 8},
-    'values': {'OptionText': 'Invoices to Enter', 'Command': 11, 'Argument': 'InvoicesNotsubmitted', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 11},
-    'values': {'OptionText': 'Test 1', 'Command': 11, 'Argument': 'test01', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 12},
-    'values': {'OptionText': 'Test 2', 'Command': 11, 'Argument': 'test02', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 14},
-    'values': {'OptionText': 'Initial Loads', 'Command': 1, 'Argument': '6', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 15},
-    'values': {'OptionText': 'Spreadsheet Interface', 'Command': 1, 'Argument': '6', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 19},
-    'values': {'OptionText': 'Run SQL', 'Command': 31, 'Argument': '', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 3, 'OptionNumber': 20},
-    'values': {'OptionText': 'Return to Main Menu', 'Command': 1, 'Argument': '5', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 5, 'OptionNumber': 0},
-    'values': {'OptionText': 'Main Menu', 'Command': None, 'Argument': 'Default', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 5, 'OptionNumber': 1},
-    'values': {'OptionText': 'Calvin', 'Command': 1, 'Argument': '3', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 5, 'OptionNumber': 2},
-    'values': {'OptionText': 'Frequently Used Menu', 'Command': 1, 'Argument': '1', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 5, 'OptionNumber': 17},
-    'values': {'OptionText': 'Test', 'Command': 1, 'Argument': '4', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 5, 'OptionNumber': 18},
-    'values': {'OptionText': 'System Menu', 'Command': 1, 'Argument': '99', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 5, 'OptionNumber': 19},
-    'values': {'OptionText': 'Admin Menu', 'Command': 1, 'Argument': '0', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 5, 'OptionNumber': 20},
-    'values': {'OptionText': 'Go Away!', 'Command': 200, 'Argument': '', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 99, 'OptionNumber': 0},
-    'values': {'OptionText': 'System Menu', 'Command': None, 'Argument': '', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 99, 'OptionNumber': 1},
-    'values': {'OptionText': 'Edit Parameters', 'Command': 92, 'Argument': '', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 99, 'OptionNumber': 2},
-    'values': {'OptionText': 'Edit Greetings', 'Command': 93, 'Argument': '', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 99, 'OptionNumber': 4},
-    'values': {'OptionText': 'Edit Menu', 'Command': 91, 'Argument': '', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 99, 'OptionNumber': 20},
-    'values': {'OptionText': 'Main menu', 'Command': 1, 'Argument': '5', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 6, 'OptionNumber': 0},
-    'values': {'OptionText': 'Initial Loads', 'Command': None, 'Argument': '', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 6, 'OptionNumber': 20},
-    'values': {'OptionText': 'Return to Main Menu', 'Command': 1, 'Argument': '5', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 6, 'OptionNumber': 2},
-    'values': {'OptionText': 'init-load-HBL-00', 'Command': 11, 'Argument': 'init-load-HBL-00', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
-{'keys': {'MenuGroup': 1, 'MenuID': 6, 'OptionNumber': 3},
-    'values': {'OptionText': 'load Invoices', 'Command': 11, 'Argument': 'init-load-Inv-00', 'PWord': '', 'TopLine': None, 'BottomLine': None, }},
+initmenu_menulist = [
+{'MenuID': -1, 'OptionNumber': 0,
+    'OptionText': 'New Menu', 'Command': None, 'Argument': 'Default', 'PWord': '', 'TopLine': 1, 'BottomLine': 1, },
+{'MenuID': -1, 'OptionNumber': 11,
+    'OptionText': 'Edit Menu', 'Command': COMMANDNUMBER.EditMenu, 'Argument': '', 'PWord': '', },
+{'MenuID': -1, 'OptionNumber': 19,
+    'OptionText': 'Change Password', 'Command': COMMANDNUMBER.ChangePW, 'Argument': '', 'PWord': '', },
+{'MenuID': -1, 'OptionNumber': 20,
+    'OptionText': 'Go Away!', 'Command': COMMANDNUMBER.ExitApplication, 'Argument': '', 'PWord': '', },
 ]
 
 newgroupnewmenu_menulist = [
@@ -95,129 +38,185 @@ newmenu_menulist = [
 ]
 
 
-# from django.db.models import Min, QuerySet
-# from .models import menuItems
-from PySide6.QtSql import (QSqlRelationalTableModel, QSqlRelation, QSqlTableModel, QSqlQueryModel, QSqlRecord, QSqlQuery,  )
-from .database import cMenuDatabase
-from .models import menuItems
+from .models import menuGroups, menuItems
 
-# class MenuRecords(QSqlRelationalTableModel):
-# # class MenuRecords(QSqlQueryModel):
-#     # mSource = menuItems.objects
-#     _tblName = 'cMenu_menuitems'
-#     _groupKey = 'MenuGroup_id'
-#     _rltblName = 'cMenu_menuGroups'
-#     _db = cMenuDatabase
-#     # _theQuery = f"""
-#     #     SELECT 
-#     #         t.*,
-#     #         r.GroupName
-#     #     FROM {_tblName} t
-#     #       LEFT JOIN {_rltblName} r ON t.MenuGroup_id = r.id
-#     # """
-class MenuRecords(menuItems):
-    def __init__(self, parent = None, db = None):
-        # if db is None:
-        #     db = self._db
-        super().__init__(parent)
-        # self.setTable(self._tblName)
-        # self.setEditStrategy(QSqlTableModel.EditStrategy.OnManualSubmit)    # think about this - pass as parm?
-        # self.setRelation(self.fieldIndex(self._groupKey), QSqlRelation(self._rltblName, 'id', 'GroupName'))
-        
-        self.select()
-
-    # def selectStatement(self):
-    #     base_sql = super().selectStatement()
-    #     # Inject your extra field (example: calculated field)
-    #     # Warning: This is fragile if the base class changes its SQL format
-    #     return base_sql.replace(
-    #         " FROM ",
-    #         f", {self._groupKey} FROM "
-    #     )
-
-
-    def menuAttr(self, mGroup:int, mID:int, Opt:int, AttrName:str) -> Any:
-        cond = f'MenuGroup_id={mGroup} AND MenuID={mID} AND OptionNumber={Opt}'
-        self.setFilter(cond)
-        return self.record(0).field(AttrName).value()
-        # return self.mSource.filter(MenuGroup=mGroup,MenuID=mID,OptionNumber=Opt).first().values(AttrName)
-        # return list(menuRec['values'][AttrName] \
-        #                 for menuRec in self.mSource \
-        #                 if menuRec['keys']['MenuGroup']==mGroup \
-        #                     and menuRec['keys']['MenuID']==mID \
-        #                     and menuRec['keys']['OptionNumber']==Opt \
-        #     )[0]
-
-    def dfltMenuID_forGroup(self, mGroup:int) -> int:
-        cond = f'MenuGroup_id={mGroup} AND Argument LIKE "default" AND OptionNumber=0'
-        self.setFilter(cond)
-        retval = self.record(0).field('MenuID').value()
-        # if self.filter(MenuGroup=mGroup,Argument__iexact='default',OptionNumber=0).exists():
-        if not self.record(0).value('id'):
-            tbl = self.tableName()
-            grpFld = 'MenuGroup_id'
-            cond = f'{grpFld}={mGroup}'
-            minval = f'MIN(MenuID)'
-            sqlWhere = f'OptionNumber=0'
-            sqlStat = f'SELECT {minval} AS minval FROM {tbl}'
-            sqlStat += f' WHERE {sqlWhere}'
-            sqlStat += f' GROUP BY {grpFld}'
-            sqlStat += f' HAVING {grpFld}={mGroup}'
-            minfound = QSqlQueryModel()
-            minfound.setQuery(sqlStat, cMenuDatabase)
-            retval = minfound.record(0).value('minval')
-        return retval
-        # return list(menuRec['keys']['MenuID'] \
-        #                 for menuRec in self.mSource \
-        #                 if menuRec['keys']['MenuGroup']==mGroup \
-        #                     and menuRec['keys']['OptionNumber']==0 \
-        #                     and menuRec['values']['Argument'].lower() == 'default'\
-        #     )[0]
+class MenuRecords:
+    """A class for managing menu items in the database."""
     
-    def dfltMenuGroup(self) -> int:
-        sqlstmnt = f'SELECT MIN(MenuGroup_id) as dfltGroup FROM {self.tblName}'
-        tmpQuery = QSqlQuery(sqlstmnt, self._db)
-        tmpQuery.first()
-        return tmpQuery.record().field('dfltGroup').value()
-        # return self.aggregate(mGroup=Min('MenuGroup'))['mGroup']
+    _tbl = menuItems
+    _tblGroup = menuGroups
+
+    def __init__(self):
+        self.session = None
+
+    def __enter__(self):
+        self.session = cMenu_Session()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            if exc_type is None:
+                self.session.commit()
+            else:
+                self.session.rollback()
+            self.session.close()
+
+    def create(self, persist:bool = True, **kwargs) -> menuItems:
+        """Create a new menu item record."""
+        new_item = self._tbl(**kwargs)
+        if persist:
+            with cMenu_Session() as session:
+                session.add(new_item)
+                session.commit()
+        #endif
+        return new_item
+    
+    def get(self, record_id: int) -> Optional[menuItems]:
+        """Get a menu item by its primary key."""
+        with cMenu_Session() as session:
+            return session.get(self._tbl, record_id)
+    
+    def update(self, record_id: int, **kwargs) -> Optional[menuItems]:
+        """Update an existing menu item record."""
+        with cMenu_Session() as session:
+            item = session.get(self._tbl, record_id)
+            if item:
+                for key, value in kwargs.items():
+                    setattr(item, key, value)
+                session.commit()
+                return item
+        return None
+    
+    def delete(self, record_id: int) -> bool:
+        """Delete a menu item record."""
+        with cMenu_Session() as session:
+            item = session.get(self._tbl, record_id)
+            if item:
+                session.delete(item)
+                session.commit()
+                return True
+        return False
+    
+    def menuAttr(self, mGroup: int, mID: int, Opt: int, AttrName: str) -> Any:
+        """Get a specific attribute from a menu item."""
+        stmt = select(getattr(self._tbl, AttrName)).where(
+            self._tbl.MenuGroup_id == mGroup,
+            self._tbl.MenuID == mID,
+            self._tbl.OptionNumber == Opt
+        )
+        with cMenu_Session() as session:
+            return session.scalar(stmt)
+    
+    def minMenuID_forGroup(self, mGroup: int) -> Optional[int]:
+        """
+        Returns the minimum MenuID for the given MenuGroup.
+        """
+        stmt = select(self._tbl.MenuID).where(
+            self._tbl.MenuGroup_id == mGroup,
+            self._tbl.OptionNumber == 0
+        ).order_by(self._tbl.MenuID.asc())
+        with cMenu_Session() as session:
+            retval = session.scalars(stmt).first()
+        return retval
+
+    def dfltMenuID_forGroup(self, mGroup:int) -> Optional[int]:
+        stmt = select(self._tbl.MenuID).where(
+            self._tbl.MenuGroup_id == mGroup,
+            self._tbl.Argument.ilike('default'),
+            self._tbl.OptionNumber == 0
+            )
+        with cMenu_Session() as session:
+            retval = session.scalar(stmt)
+        if not retval:
+            # If no record found, we need to find the minimum MenuID for this group
+            retval = self.minMenuID_forGroup(mGroup)
+        return retval
+
+    def dfltMenuGroup(self) -> Optional[int]:
+        """
+        Returns the minimum MenuGroup.
+        """
+        stmt = select(self._tbl.MenuGroup_id).order_by(self._tbl.MenuGroup_id.asc())
+        with cMenu_Session() as session:
+            retval = session.scalars(stmt).first()
+        return retval
     
     def menuDict(self, mGroup:int, mID:int) ->  Dict[int,Dict[str, Any]]:
-        cond = f'MenuGroup_id={mGroup} AND MenuID={mID}'
-        self.setFilter(cond)
-        return { self.record(n).field('OptionNumber').value(): 
-                    { self.record(n).fieldName(f): self.record(n).field(f).value() for f in range(self.columnCount())}
-                for n in range(self.rowCount()) }
-        # return { mRec['OptionNumber']: mRec for mRec in self.filter(MenuGroup=mGroup,MenuID=mID).values() }
-        # return { mRec['keys']['OptionNumber']: mRec['values'] \
-        #             for mRec in self.mSource \
-        #             if mRec['keys']['MenuGroup']==mGroup \
-        #                 and mRec['keys']['MenuID']==mID 
-        #     }
-    
+        # use selectjoin
+        stmt = (
+            select(*self._tbl.__table__.columns)
+            .join(self._tblGroup, self._tbl.MenuGroup_id == self._tblGroup.id)
+            .where(
+                self._tbl.MenuGroup_id == mGroup,
+                self._tbl.MenuID == mID
+                )
+            )
+        with cMenu_Session() as session:
+            result = session.execute(stmt).mappings()
+            # Convert the result to a dictionary with OptionNumber as keys
+            # and dictionaries of field values as values
+            # Note: 'rec' is a RowMapping, so we can access fields by name
+            retDict = { row['OptionNumber']: dict(row) for row in result }
+        return retDict
+
     # def menuDBRecs(self, mGroup:int, mID:int) ->  QuerySet:
-    def menuDBRecs(self, mGroup:int, mID:int) ->  Dict[int, QSqlRecord]:
-        cond = f'MenuGroup_id={mGroup} AND MenuID={mID}'
-        self.setFilter(cond)
-        return { self.record(n).field('OptionNumber').value(): QSqlRecord(self.record(n)) 
-                for n in range(self.rowCount()) }
-        # return self.filter(MenuGroup=mGroup,MenuID=mID)
-        # return { mRec['keys']['OptionNumber']: mRec['values'] \
-        #             for mRec in self.mSource \
-        #             if mRec['keys']['MenuGroup']==mGroup \
-        #                 and mRec['keys']['MenuID']==mID 
-        #     }
-    
+    def menuDBRecs(self, mGroup:int, mID:int) ->  Dict[int, menuItems]:
+        # use selectjoin
+        stmt = (
+            select(self._tbl)
+            .join(self._tblGroup, self._tbl.MenuGroup_id == self._tblGroup.id)
+            .where(
+                self._tbl.MenuGroup_id == mGroup,
+                self._tbl.MenuID == mID
+            )
+        )
+        with cMenu_Session() as session:
+            result = session.execute(stmt).scalars()
+            # Convert the result to a dictionary with OptionNumber as keys
+            # and the menuItems objects as values
+            retDict = { rec.OptionNumber: rec for rec in result }
+        return retDict
+
     def menuExist(self, mGroup:int, mID:int) ->  bool:
-        sqlstmnt = f'SELECT 1 FROM {self.tblName} WHERE MenuGroup_id={mGroup} AND MenuID={mID} AND OptionNumber=0'
-        tmpQuery = QSqlQuery(sqlstmnt, self._db)
-        return tmpQuery.first()
-        # return self.filter(MenuGroup=mGroup,MenuID=mID,OptionNumber=0).exists()
-        # return any(list(True \
-        #             for mRec in self.mSource \
-        #             if mRec['keys']['MenuGroup']==mGroup \
-        #                 and mRec['keys']['MenuID']==mID \
-        #                 and mRec['keys']['OptionNumber']==0 \
-        #     ))
+        stmt = select(self._tbl).where(
+            self._tbl.MenuGroup_id == mGroup,
+            self._tbl.MenuID == mID,
+            self._tbl.OptionNumber == 0
+        )
+        with cMenu_Session() as session:
+            result = session.execute(stmt).first()
+        # If the result is None, the menu does not exist
+        # If the result is a Row or RowMapping, the menu exists
+        return (result is not None)
+
+    # TODO: generalize this, mebbe to a new class
+    def recordsetList(self, retFlds:int|List[str] = retListofQSQLRecord, filter:Optional[str] = None) -> List:
+        stmt:Select = select_with_join_excluding(self._tbl.__table__, self._tblGroup.__table__, (self._tbl.MenuGroup_id == self._tblGroup.id), ['id'])
+        if retFlds == '*' or (isinstance(retFlds,List) and retFlds[0]=='*') or retFlds == retListofQSQLRecord:
+            stmt = stmt
+        elif isinstance(retFlds, List):
+            # Filter the existing selected columns by name
+            filtered_cols = [
+                col for col in stmt.selected_columns
+                if col.name in retFlds
+            ]
+
+            # Apply with_only_columns
+            stmt = stmt.with_only_columns(*filtered_cols)
+        else:
+            stmt = stmt
+        #endif retFlds
+        if filter:
+            stmt = stmt.where(text(filter))
+        #endif filter
+
+        with cMenu_Session() as session:
+            records = session.execute(stmt)
+            retList = list(records.mappings())
+
+        return retList
+
+    #enddef recordsetList
 
     def newgroupnewmenuDict(self, mGroup:int, mID:int) ->  List[Dict]:
         return newgroupnewmenu_menulist
