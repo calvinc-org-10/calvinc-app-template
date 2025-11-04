@@ -183,8 +183,14 @@ class cMenu(QWidget):
             msg.setWindowTitle('Menu Doesn\'t Exist')
             msg.setIcon(QMessageBox.Icon.Warning)
             msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-            msg.setText(f'Menu {menuID} does\'t exist!')
+            msg.setText(f'Menu {menuID} doesn\'t exist!')
             msg.open()
+    # loadMenu
+
+    @Slot()
+    def refreshMenu(self):
+        self.loadMenu(self.intmenuGroup, self.intmenuID)
+    # refreshMenu
     
     @Slot()
     def handleMenuButtonClick(self):
@@ -227,7 +233,7 @@ class cMenu(QWidget):
             # return redirect('change_password')
         elif MENUCOMMANDS.get(CommandNum) == 'EditMenu':
             CmdFm = menucommand_handlers._internalForms.EditMenu
-            frm = menucommand_handlers.FormBrowse(self, CmdFm)
+            frm = menucommand_handlers.FormBrowse(self, CmdFm, MainMenuWindow=self)
             if frm: 
                 self.open_childScreen(CmdFm, frm)
         # elif MENUCOMMANDS.get(CommandNum) == 'EditParameters':

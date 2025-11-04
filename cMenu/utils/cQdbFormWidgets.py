@@ -1346,8 +1346,6 @@ class cSimpleRecordForm_Base(QWidget):
         """
         self.initializeRec()
         self.on_loadfirst_clicked()
-        
-        self.showNewRecordFlag()
     # initialdisplay()
 
     def statusBar(self) -> QStatusBar|None:
@@ -1376,6 +1374,7 @@ class cSimpleRecordForm_Base(QWidget):
                 widg.loadFromRecord(self.currRec())
 
         self.showNewRecordFlag()
+        self.showCommitButton()
         # self.setDirty(False) - nope, don't need to set form dirty state here - isDirty checks individual fields
     # fillFormFromRec
 
@@ -1387,6 +1386,14 @@ class cSimpleRecordForm_Base(QWidget):
         if not isinstance(nrf, QWidget):
             return
         nrf.setVisible(self.isNewRecord())
+
+    def showCommitButton(self) -> None:
+        """Show the commit button if the record is dirty."""
+        btnCommit = getattr(self, 'btnCommit', None)
+        if not isinstance(btnCommit, QWidget):
+            return
+        btnCommit.setEnabled(self.isDirty())
+    # showCommitButton
 
     def repopLookups(self) -> None:
         """Repopulate all lookup widgets (e.g., after a save).
@@ -1645,6 +1652,7 @@ class cSimpleRecordForm_Base(QWidget):
 
         # Update form dirty state
         self.setDirty(widget, True)
+        self.showCommitButton()
         # endif wdgt_value
     # changeField
 
@@ -1766,7 +1774,7 @@ class cSimpleRecordForm_Base(QWidget):
         else:
             self.initializeRec()
             self.fillFormFromcurrRec()
-    # delete_record
+    # on_delete_clicked
 
     # ##########################################
     # ########    Record Status

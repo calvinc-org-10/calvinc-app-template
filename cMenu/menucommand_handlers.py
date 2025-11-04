@@ -786,6 +786,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     @Slot()
     def on_save_clicked(self):
         super().on_save_clicked()
+        self.requestMenuReload.emit()   # let listeners know we need a menu reload
     # on_save_clicked
 
     ##########################################
@@ -828,8 +829,27 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         self.fillFormFromcurrRec()
 
         self.requestMenuReload.emit()   # let listeners know we need a menu reload
-    # delete_record
+    # on_delete_clicked
 
+    # ##########################################
+    # ########    Record Status
+
+    def isNewRecord(self) -> bool:
+        # temporary for testing
+        return super().isNewRecord()
+    # isNewRecord
+    
+    @Slot()
+    def setDirty(self, wdgt, dirty: bool = True):
+        # temporary for testing
+        super().setDirty(wdgt, dirty)
+    # setFormDirty
+    
+    def isDirty(self, widg = None) -> bool:
+        #temporary for testing
+        return super().isDirty(widg)
+    # isFormDirty
+    
     ##########################################
     ########    Widget-responding procs
 
@@ -877,14 +897,8 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
                 self.requestMenuReload.emit()   # let listeners know we need a menu reload
             #endif CMChoiceCopy
         # #endif retval
-
         return
     # copyMenuOption
-    
-    ######################################
-    ######################################
-    ######################################
-    
     
 # class cWidgetMenuItem
 
@@ -1005,9 +1019,11 @@ class cEditMenu(QWidget):
                 int(self.combobxMenuID.currentText()) if ret==self.DialogCode.Accepted else None,
                 )
 
-    def __init__(self, parent:QWidget|None = None):
+    def __init__(self, parent:QWidget|None = None, MainMenuWindow:QWidget|None = None):
         super().__init__(parent)
 
+        self.MainMenuWindow = MainMenuWindow
+        
         self.layoutMain: QBoxLayout = QVBoxLayout(self)
         # self.layoutMain.setContentsMargins(5,5,5,5)        
         self.layoutmainMenu: QGridLayout = QGridLayout()
@@ -1224,6 +1240,8 @@ class cEditMenu(QWidget):
     # movetoutil_findrecwithvalue
     
     def displayMenu(self):
+        from cMenu.cMenu import cMenu as cMenuClass
+
         menuGroup = self.intmenuGroup
         menuID = self.intmenuID
         menuItemRecs = self.currentMenu
@@ -1271,6 +1289,8 @@ class cEditMenu(QWidget):
 
             self.WmenuItm[bNum] = self.wdgtmenuITEM(mnuItmRc)
             self.WmenuItm[bNum].requestMenuReload.connect(lambda: self.loadMenu(self.intmenuGroup, self.intmenuID))
+            if isinstance(self.MainMenuWindow, cMenuClass):
+                self.WmenuItm[bNum].requestMenuReload.connect(self.MainMenuWindow.refreshMenu)
             self.layoutmainMenu.addWidget(self.WmenuItm[bNum],y,x) 
         # endfor
 
