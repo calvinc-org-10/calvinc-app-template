@@ -218,8 +218,9 @@ class cMenu(QWidget):
                 self.open_childScreen(CmdFm, frm)
         # elif MENUCOMMANDS.get(CommandNum) == 'ConstructSQLStatement':
         #    pass
-        # elif MENUCOMMANDS.get(CommandNum)  == 'LoadExtWebPage':
-        #     return
+        elif MENUCOMMANDS.get(CommandNum)  == 'LoadExtWebPage':
+            menucommand_handlers.loadExternalWebPage(CommandArg)
+            return
             # retHTTP = fn_LoadExtWebPage(req, CommandArg)
         # elif MENUCOMMANDS.get(CommandNum) == 'ChangePW':
         #     return

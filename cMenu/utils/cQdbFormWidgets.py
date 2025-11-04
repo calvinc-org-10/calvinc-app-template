@@ -205,12 +205,14 @@ class cSimpRecFmElement_Base(QWidget):
         """
         raise NotImplementedError
 
-    def isDirty(self) -> bool:
+    def isDirty(self, widg = None) -> bool:
         """Return True if the widget's value differs from what was loaded.
         
         Returns:
             bool: True if the value has been modified, False otherwise.
         """
+        if widg is None:
+            widg = self
         return False
 
     def setDirty(self, dirty: bool = True, sendSignal:bool = True) -> None:
@@ -570,13 +572,15 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
         self._last_value = new_val
         self.setDirty(False, sendSignal=False)
 
-    def isDirty(self) -> bool:
+    def isDirty(self, widg = None) -> bool:
         """Check if this field widget has unsaved changes.
         
         Returns:
             bool: True if the current value differs from the loaded value.
         """
-        return self._dirty
+        if widg is None:
+            widg = self
+        return widg._dirty
 
     def setDirty(self, dirty: bool = True, sendSignal:bool = True) -> None:
         """Set the dirty state of this field widget.
@@ -845,12 +849,14 @@ class cQFmLookupWidg(cSimpRecFmElement_Base):
         return
 
     # lookups don't become dirty
-    def isDirty(self):
+    def isDirty(self, widg = None):
         """Check if the lookup widget is dirty.
         
         Returns:
             bool: Always returns False since lookups don't track dirty state.
         """
+        if widg is None:
+            widg = self
         return False
     
     def setDirty(self, dirty:bool = False, sendSignal:bool = False):
@@ -905,7 +911,6 @@ class cSimpleRecordForm_Base(QWidget):
     _tabindexTOtabname: dict[int, str] = {}
     _tabnameTOtabindex: dict[str, int] = {}
     fieldDefs: Dict[str, Dict[str, Any]] = {}
-    _lookupFrmElements: List[cQFmLookupWidg] = []
 
     def __init__(self, 
         model: Type[Any]|None = None, 
@@ -926,6 +931,9 @@ class cSimpleRecordForm_Base(QWidget):
         # super init
         super().__init__(parent)
  
+        self._formWidgets: Dict[str, QWidget] = {}
+        self._lookupFrmElements: List[cQFmLookupWidg] = []
+        
         # set model, primary key
         if not self._ORMmodel:
             if not model:
@@ -1123,16 +1131,17 @@ class cSimpleRecordForm_Base(QWidget):
         # or return self.layoutForm.count() # mebbe not - see _buildPages
     # numPages
     
-    def _bindField(self, _fieldName: str, widget: QWidget) -> None:
+    def _bindField(self, fieldNameKey: str, widget: QWidget) -> None:
         """Register field and connect to changeField."""
-        fldDef = self.fieldDefs.get(_fieldName)
+        fldDef = self.fieldDefs.get(fieldNameKey)
         if not fldDef:
-            raise KeyError(f"Field '{_fieldName}' not found in fieldDefs")
-        lookup = (_fieldName[0] == '@')
-        fieldName = _fieldName if not lookup else _fieldName[1:]
+            raise KeyError(f"Field '{fieldNameKey}' not found in fieldDefs")
+        lookup = (fieldNameKey[0] == '@')
+        fieldName = fieldNameKey if not lookup else fieldNameKey[1:]
         subFormElmnt = hasattr(fldDef, 'subform_class')
 
-        fldDef["widget"] = widget
+        if not lookup:
+            self._formWidgets[fieldNameKey] = widget
 
         if isinstance(widget, cQFmFldWidg) and not lookup and not subFormElmnt:
             widget.setModelField(fieldName)
@@ -1146,8 +1155,8 @@ class cSimpleRecordForm_Base(QWidget):
     def _placeFields(self, lookupsAllowed: bool = True) -> None:
         """
         Build widgets and wrap them into _cSimpRecFmElmnt_Base adapters.
-        Each fieldDef ends up with:
-            - "widget": the actual Qt widget
+        Args:
+            lookupsAllowed (bool, optional): Whether to create lookup widgets for fields prefixed with '@'. Defaults to True.
         """
 
         def _apply_optional_attrib(widget, attr, value):
@@ -1171,14 +1180,14 @@ class cSimpleRecordForm_Base(QWidget):
         mdl = self.ORMmodel()
         assert mdl is not None, "ORMmodel must be set before placing fields"
     
-        for _fldName, fldDef in self.fieldDefs.items():
+        for fldNameKey, fldDef in self.fieldDefs.items():
             widget = None
 
-            # _fldName indicates a lookup field if the field name starts with '@'
+            # fldNameKey indicates a lookup field if the field name starts with '@'
             # lookup will be the boolean flag
             # fldName is the actual field name
-            isLookup = (_fldName[0] == '@')
-            fldName = _fldName if not isLookup else _fldName[1:]
+            isLookup = (fldNameKey[0] == '@')
+            fldName = fldNameKey if not isLookup else fldNameKey[1:]
             SubFormCls = fldDef.get("subform_class", None)
             isSubFormElmnt = (SubFormCls is not None)
 
@@ -1271,7 +1280,8 @@ class cSimpleRecordForm_Base(QWidget):
             #endif isinstance(widget, (cQFmFldWidg, cQFmLookupWidg)):
 
             # Save references
-            self._bindField(_fldName, widget)
+            #TODO: move _bindField code here ??
+            self._bindField(fldNameKey, widget)
 
             # Place in layout
             if isinstance(pos, tuple) and len(pos) >= 2:
@@ -1361,13 +1371,12 @@ class cSimpleRecordForm_Base(QWidget):
         Updates all field widgets with values from the current record
         and updates the dirty and new record flags.
         """
-        for fldDef in self.fieldDefs.values():
-            fld = fldDef.get("widget")
-            if fld:
-                fld.loadFromRecord(self.currRec())
+        for widg in self._formWidgets.values():
+            if isinstance(widg, cSimpRecFmElement_Base):
+                widg.loadFromRecord(self.currRec())
 
         self.showNewRecordFlag()
-        self.setDirty(False)
+        # self.setDirty(False) - nope, don't need to set form dirty state here - isDirty checks individual fields
     # fillFormFromRec
 
     # TODO: wrap with fillFormFromcurrRec
@@ -1654,8 +1663,8 @@ class cSimpleRecordForm_Base(QWidget):
             for fldName, fldDef in self.fieldDefs.items():
                 isSubFormElmnt = "subform_class" in fldDef
                 if not isSubFormElmnt:      # subforms handled after main record is saved
-                    widget = fldDef.get("widget")
-                    if widget:
+                    widget = self._formWidgets.get(fldName)
+                    if isinstance(widget, cSimpRecFmElement_Base):
                         widget.saveToRecord(currRec)
             # endfor fldDef in self.fieldDefs
 
@@ -1680,8 +1689,8 @@ class cSimpleRecordForm_Base(QWidget):
             for fldName, fldDef in self.fieldDefs.items():
                 isSubFormElmnt = "subform_class" in fldDef
                 if isSubFormElmnt:
-                    widget = fldDef.get("widget")
-                    if widget:
+                    widget = self._formWidgets.get(fldName)
+                    if isinstance(widget, cSimpRecFmElement_Base):
                         widget.saveToRecord(currRec)
             # endfor fldDef in self.fieldDefs
             
@@ -1791,16 +1800,23 @@ class cSimpleRecordForm_Base(QWidget):
             btnCommit.setEnabled(self.isDirty())
     # setFormDirty
     
-    def isDirty(self) -> bool:
+    def isDirty(self, widg = None) -> bool:
         """Check if any form element is dirty.
         
         Returns:
             bool: True if any child element has been modified, False otherwise.
         """
+        if widg is None:
+            widg = self
+            
         # poll children; if one is Dirty, form is Dirty
-        for FmElement in self.children():
+        for FmElement in widg.children():
             if not isinstance(FmElement, cSimpRecFmElement_Base):
-                continue
+                dirtyState = self.isDirty(FmElement)
+                if dirtyState:
+                    return True
+                else:
+                    continue
             elif FmElement.isDirty():
                 return True
             else:
@@ -2629,24 +2645,31 @@ class cSimpleRecordSubForm2(cSimpRecFmElement_Base, cSimpleRecordForm_Base):
         return
     # setFormDirty
 
-    def isDirty(self) -> bool:
+    def isDirty(self, widg = None) -> bool:
         """Check if any child form element is dirty.
         
         Returns:
-            bool: True if any child element has been modified.
+            bool: True if any child element has been modified, False otherwise.
         """
         # poll children; if one is Dirty, form is Dirty
-        # for rec in _rcrdDisplArea.children():
-        for FmElement in self.children():
+        if widg is None:
+            widg = self
+            
+        # poll children; if one is Dirty, form is Dirty
+        for FmElement in widg.children():
             if not isinstance(FmElement, cSimpRecFmElement_Base):
-                continue
+                dirtyState = self.isDirty(FmElement)
+                if dirtyState:
+                    return True
+                else:
+                    continue
             elif FmElement.isDirty():
                 return True
             else:
                 continue
         #endfor FmElement in self.children():
-
+        
         return False
-    # del_row
+    # isDirty
 
 #endclass cSubRecordForm2

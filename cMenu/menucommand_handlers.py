@@ -1,6 +1,8 @@
 from typing import (Dict, List, Mapping, Tuple, Any, )
 import copy
 
+import webbrowser
+
 from PySide6.QtCore import (Qt, QObject,
     Signal, Slot, 
     QAbstractTableModel, QModelIndex, )
@@ -27,6 +29,7 @@ from sqlalchemy.orm.session import make_transient
 
 from cMenu.utils import areYouSure, cComboBoxFromDict, cSimpleRecordForm_Base, cstdTabWidget
 from menuformname_viewMap import FormNameToURL_Map
+from externalWebPageURL_Map import ExternalWebPageURL_Map
 
 from .database import cMenu_Session
 from .dbmenulist import (MenuRecords, newgroupnewmenu_menulist, newmenu_menulist, )
@@ -774,6 +777,16 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     ##########################################
     ########    Update
 
+    @Slot()
+    # def changeField(self):
+    def changeField(self, wdgt, dbField, wdgt_value, force=False):
+        super().changeField(wdgt, dbField, wdgt_value, force=False)
+    # changeField
+
+    @Slot()
+    def on_save_clicked(self):
+        super().on_save_clicked()
+    # on_save_clicked
 
     ##########################################
     ########    Delete
@@ -867,6 +880,12 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
 
         return
     # copyMenuOption
+    
+    ######################################
+    ######################################
+    ######################################
+    
+    
 # class cWidgetMenuItem
 
 class cEditMenu(QWidget):
@@ -1202,6 +1221,8 @@ class cEditMenu(QWidget):
         #endwhile not testrec.isEmpty():
         
         return None
+    # movetoutil_findrecwithvalue
+    
     def displayMenu(self):
         menuGroup = self.intmenuGroup
         menuID = self.intmenuID
@@ -1230,12 +1251,16 @@ class cEditMenu(QWidget):
         for bNum in range(_NUM_menuBUTTONS):
             y, x = ((bNum % _NUM_menuBTNperCOL)+1, 0 if bNum < _NUM_menuBTNperCOL else 2)
             bIndx = bNum+1
-            mnuItmRc = self.movetoutil_findrecwithvalue(menuItemRecs, 'OptionNumber', bIndx)
+            # mnuItmRc = self.movetoutil_findrecwithvalue(menuItemRecs, 'OptionNumber', bIndx)  # this is safer, but the line below is faster and is same in this case
+            mnuItmRc = menuItemRecs.get(bIndx)
             if not mnuItmRc:
                 mnuItmRc = menuItems(
                     MenuGroup_id=menuGroup,
                     MenuID=menuID,
                     OptionNumber=bIndx,
+                    OptionText = '',
+                    Argument = '',
+                    PWord = ''
                 )
             oldWdg = self.WmenuItm[bNum]
             if oldWdg:
@@ -1610,6 +1635,22 @@ class OpenTable(QWidget):
     def addRow(self):
         self.model.insertRow(self.model.rowCount())
 
+
+#############################################
+#############################################
+
+class loadExternalWebPage():
+    def __init__(self, webPgKey:str, parent:QWidget|None = None):
+        url = ExternalWebPageURL_Map.get(webPgKey, None)
+        if url:
+            self.reloadPage(url)
+    # __init__
+    
+    def reloadPage(self, url:str):
+        webbrowser.open_new_tab(url)
+    # reloadPage
+
+
 #############################################
 #############################################
 #############################################
@@ -1621,7 +1662,7 @@ class _internalForms:
     # RunCode = ''
     RunSQLStatement = '.-ruN-sql.-'
     # ConstructSQLStatement = ''
-    # LoadExtWebPage = ''
+    # LoadExtWebPage = '.-lod-ext-wbpg.-'
     # ChangePW = ''
     # EditParameters = ''
     # EditGreetings = ''
