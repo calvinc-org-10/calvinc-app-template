@@ -51,6 +51,8 @@ class cSimpleRecordForm_Base(QWidget):
         ):
 ```
 
+<div style="page-break-after: always;"></div>
+
 ### fieldDefs keywords
 
 *   \# fldNameKey indicates a lookup field if the field name starts with '@'  
@@ -80,4 +82,6 @@ class cSimpleRecordForm_Base(QWidget):
 *   'tooltip'
 *   'bgColor'
 
+<div style="page-break-after: always;"></div>
 
+![alt text](cSingleRecordFormLayout.png)
