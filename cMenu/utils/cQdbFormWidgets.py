@@ -900,6 +900,7 @@ class cSimpleRecordForm_Base(QWidget):
         pages (List): List of page/tab names for multi-page forms.
         fieldDefs (Dict[str, Dict[str, Any]]): Field definitions for the form.
     """
+    # TODO: be more careful with class attributes vs instance attributes
     _ORMmodel:Type[Any]|None = None
     _primary_key: Any
     _currRec: Any
@@ -1873,7 +1874,6 @@ class cSimpleRecordForm(cSimpleRecordForm_Base):
     Returns:
         _type_: _description_
     """
-    _formname = None
 
     def __init__(self, 
         model: Type[Any]|None = None, 
@@ -1889,6 +1889,7 @@ class cSimpleRecordForm(cSimpleRecordForm_Base):
             formname (str | None, optional): The name of the form. Defaults to None.
             parent (QWidget | None, optional): The parent widget. Defaults to None.
         """
+        self._formname = getattr(self, '_formname', None)
         if not self._formname:
             self._formname = formname if formname else 'Form'
 
