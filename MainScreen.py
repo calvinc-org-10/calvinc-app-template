@@ -4,6 +4,7 @@ from PySide6.QtCore import (QCoreApplication, QMetaObject, )
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QScrollArea )
 
 from cMenu.cMenu import cMenu
+from sysver import sysver, sysver_key, _appname
 
 
 class MainScreen(QWidget):
@@ -18,12 +19,9 @@ class MainScreen(QWidget):
         
         self.setLayout(llayout)
         
-        self.retranslateUi()
+        self.setWindowTitle(QCoreApplication.translate("MainWindow", _appname, None))
 
         # QMetaObject.connectSlotsByName(self)
     # __init__
 
-    def retranslateUi(self):
-        self.setWindowTitle(QCoreApplication.translate("MainWindow", u"Incoming Shipments", None))
-    # retranslateUi
 
