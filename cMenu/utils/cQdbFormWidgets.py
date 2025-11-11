@@ -957,16 +957,19 @@ class cSimpleRecordForm_Base(QWidget):
         layoutForm = dictFormLayouts.get('layoutForm')
         # assert isinstance(layoutForm, QTabWidget), "layoutForm must be a QTabWidget"
         self.layoutFormFixedTop = dictFormLayouts.get('layoutFormFixedTop')
-        assert isinstance(self.layoutFormFixedTop, QGridLayout), "layoutFormFixedTop must be a QGridLayout"
+        if self.layoutFormFixedTop is not None:
+            assert isinstance(self.layoutFormFixedTop, QGridLayout), "layoutFormFixedTop must be a QGridLayout"
         self.layoutFormPages = dictFormLayouts.get('layoutFormPages')
         assert isinstance(self.layoutFormPages, QTabWidget), "layoutFormPages must be a QTabWidget"
         self.layoutFormFixedBottom = dictFormLayouts.get('layoutFormFixedBottom')
-        assert isinstance(self.layoutFormFixedBottom, QGridLayout), "layoutFormFixedBottom must be a QGridLayout"
+        if self.layoutFormFixedBottom is not None:
+            assert isinstance(self.layoutFormFixedBottom, QGridLayout), "layoutFormFixedBottom must be a QGridLayout"
         self.layoutButtons = dictFormLayouts.get('layoutButtons')
         assert isinstance(self.layoutButtons, (QHBoxLayout, QVBoxLayout)), "layoutButtons must be a QHBoxLayout or QVBoxLayout"
         # rtnDict['statusBar'] = statusBar
         self._statusBar = dictFormLayouts.get('statusBar')
-        assert isinstance(self._statusBar, QStatusBar), "statusBar must be a QStatusBar"
+        if self._statusBar is not None:
+            assert isinstance(self._statusBar, QStatusBar), "statusBar must be a QStatusBar"
         # rtnDict['lblFormName'] = lblFormName
         # rtnDict['newrecFlag'] = newrecFlag
         self._newrecFlag = self.dictFormLayouts.get('newrecFlag')
@@ -1183,7 +1186,7 @@ class cSimpleRecordForm_Base(QWidget):
             widget.signalLookupSelected.connect(lambda *_: self.changeField(widget, widget._lookup_field, widget.Value()))
         #endif isinstance(widget)
     # bindField
-    def _placeFields(self, layoutFormPages:QTabWidget, layoutFormFixedTop: QGridLayout, layoutFormFixedBottom: QGridLayout, lookupsAllowed: bool = True) -> None:
+    def _placeFields(self, layoutFormPages:QTabWidget, layoutFormFixedTop: QGridLayout|None, layoutFormFixedBottom: QGridLayout|None, lookupsAllowed: bool = True) -> None:
         """
         Build widgets and wrap them into _cSimpRecFmElmnt_Base adapters.
         Args:
@@ -1363,7 +1366,9 @@ class cSimpleRecordForm_Base(QWidget):
         assert isinstance(layoutMain, QBoxLayout), 'layoutMain must be a Box Layout'
 
         for itm in items:
-            if isinstance(itm, QLayout):
+            if itm is None:
+                continue
+            elif isinstance(itm, QLayout):
                 layoutMain.addLayout(itm)
             elif isinstance(itm, QWidget):
                 layoutMain.addWidget(itm)
@@ -2365,7 +2370,7 @@ class cSimpRecSbFmRecord(cSimpRecFmElement_Base, cSimpleRecordForm_Base):
     #############################################################
 
     # def _placeFields(self, lookupsAllowed: bool = False) -> None:
-    def _placeFields(self, layoutFormPages:QTabWidget, layoutFormFixedTop: QGridLayout, layoutFormFixedBottom: QGridLayout, lookupsAllowed: bool = True) -> None:
+    def _placeFields(self, layoutFormPages:QTabWidget, layoutFormFixedTop: QGridLayout|None, layoutFormFixedBottom: QGridLayout|None, lookupsAllowed: bool = True) -> None:
         """Place fields with lookups disabled."""
         return super()._placeFields(layoutFormPages, layoutFormFixedTop, layoutFormFixedBottom, lookupsAllowed = False)
     # _placeFields
@@ -2592,7 +2597,7 @@ class cSimpleRecordSubForm2(cSimpRecFmElement_Base, cSimpleRecordForm_Base):
     #         self.layoutMain.addLayout(lyout)            #TODO: more flexibility in where status bar is placed
     # # _finalizeMainLayout
 
-    def _placeFields(self, layoutFormPages:QTabWidget, layoutFormFixedTop: QGridLayout, layoutFormFixedBottom: QGridLayout, lookupsAllowed: bool = True) -> None:
+    def _placeFields(self, layoutFormPages:QTabWidget, layoutFormFixedTop: QGridLayout|None, layoutFormFixedBottom: QGridLayout|None, lookupsAllowed: bool = True) -> None:
         """Place fields (handled by _addDisplayRow for list-based subforms)."""
         # field placement handled by _addDisplayRow, since they are placed in a list
         return 
