@@ -1433,7 +1433,7 @@ class cEditMenu(QWidget):
     @Slot()
     def rmvMenu(self):
         
-        pleaseWriteMe(self, 'Remove Menu')
+        pleaseWriteMe('Remove Menu', parent=self)
         return
         
         (mGrp, mnu, mOpt) = (self.currRec.MenuGroup, self.currRec.MenuID, self.currRec.OptionNumber)
@@ -1628,7 +1628,7 @@ class OpenTable(QWidget):
             
 
     def getTable(self, tblName:str): # -> Tuple[Exception|None, List[Dict[str, Any]], List[str]|str]:
-        pleaseWriteMe(self, 'fix getTable in class OpenTable')
+        pleaseWriteMe('fix getTable in class OpenTable', parent=self)
         # inputSQL:str = f'SELECT * FROM {tblName}'
         # # inputSQL:str = f'SELECT * FROM %(tblName)s'
         # sqlerr = None
