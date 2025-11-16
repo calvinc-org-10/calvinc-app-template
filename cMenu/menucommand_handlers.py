@@ -13,7 +13,7 @@ from PySide6.QtWidgets import ( QBoxLayout, QLayout, QStyle, QTabWidget,
     QWidget, QGridLayout, QHBoxLayout, QVBoxLayout, QFormLayout, QFrame, 
     QTableView, QHeaderView, QScrollArea,
     QDialog, QMessageBox, QFileDialog, QDialogButtonBox,
-    QLabel, QLCDNumber, QLineEdit, QTextEdit, QPlainTextEdit, QPushButton, QCheckBox, QComboBox, 
+    QLabel, QLCDNumber, QLineEdit, QTextEdit, QPlainTextEdit, QPushButton, QCheckBox, QComboBox, QDateEdit,
     QRadioButton, QGroupBox, QButtonGroup, 
     QSizePolicy, 
     )
@@ -79,7 +79,9 @@ def FormBrowse(parntWind, formname, *args, **kwargs) -> Any|None:
             #     formname = f'{formname} exists but url {url} '
             # #endif
             pass
-        elif FormNameToURL_Map[formname][viewIndex]:
+        # endif FormNameToURL_Map[formname][urlIndex]:
+        # elif FormNameToURL_Map[formname][viewIndex]:
+        if FormNameToURL_Map[formname][viewIndex]:
             fn = None
             try:
                 fn = FormNameToURL_Map[formname][viewIndex]
@@ -88,6 +90,8 @@ def FormBrowse(parntWind, formname, *args, **kwargs) -> Any|None:
                 # fn = None
                 formname = f'{formname} exists but view {FormNameToURL_Map[formname][viewIndex]}'
             #end try
+        # endif FormNameToURL_Map[formname][viewIndex]:
+    # endif formname in FormNameToURL_Map:
     if not theForm:
         formname = f'Form {formname} is not built yet.  Calvin needs more coffee.'
         # print(formname)
@@ -342,8 +346,8 @@ class cMRunSQL(QWidget):
         
     def show(self):
         self.wndwGetSQL.show()
-        
-    @Slot(str)
+
+    @Slot(str)  #type: ignore
     def rawSQLexec(self, inputSQL:str):
         #TODO: choose session - put in user control
         engine = app_Session.kw["bind"]
@@ -631,7 +635,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
             # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
             return Nochoice | { str(n+1): n+1 for n in range(_NUM_menuBUTTONS) if n+1 not in definedOptions }
 
-        @Slot()
+        @Slot(int)  #type: ignore
         def loadMenuIDs(self, idx:int):
             mnuGrp:int = self.combobxMenuGroupID.currentData()
             # if self.combobxMenuGroupID.currentIndex() != -1:
@@ -640,7 +644,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
             self.combobxMenuID.setCurrentIndex(-1)
             self.combobxMenuOption.clear()
             self.enableOKButton()
-        @Slot()
+        @Slot(int) #type: ignore
         def loadMenuOptions(self, idx:int):
             mnuID:int = self.combobxMenuID.currentData()
             #if self.combobxMenuID.currentIndex() != -1:
@@ -648,7 +652,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
                 self.combobxMenuOption.replaceDict(dict(self.dictmenuOptions(mnuID)))
             self.combobxMenuOption.setCurrentIndex(-1)
             self.enableOKButton()
-        @Slot()
+        @Slot(int)  #type: ignore
         def menuOptionChosen(self, idx:int):
             self.enableOKButton()
         def enableOKButton(self):
@@ -802,7 +806,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     ##########################################
     ########    Update
 
-    @Slot()
+    @Slot()     #type: ignore
     # def changeField(self):
     def changeField(self, wdgt, dbField, wdgt_value, force=False):
         super().changeField(wdgt, dbField, wdgt_value, force=False)
@@ -864,7 +868,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         return super().isNewRecord()
     # isNewRecord
     
-    @Slot()
+    @Slot(Any, bool)   #type: ignore
     def setDirty(self, wdgt, dirty: bool = True):
         # temporary for testing
         super().setDirty(wdgt, dirty)
@@ -1362,7 +1366,7 @@ class cEditMenu(QWidget):
     ##########################################
     ########    Update
 
-    @Slot()
+    @Slot(Any)   #type: ignore
     def changeField(self, wdgt:cQFmFldWidg) -> bool:
         # move to class var?
         forgnKeys = {   
@@ -1455,7 +1459,7 @@ class cEditMenu(QWidget):
     ##########################################
     ########    CRUD support
 
-    @Slot()
+    @Slot(QWidget, bool)   #type: ignore
     def setFormDirty(self, wdgt:QWidget, dirty:bool = True):
         if wdgt.property('noedit'):
             return
@@ -1466,7 +1470,7 @@ class cEditMenu(QWidget):
             if dirty: self.setProperty('dirty',True)
         else:
             for W in self.children():
-                if any([W.inherits(tp) for tp in ['QLineEdit', 'QTextEdit', 'QCheckBox', 'QComboBox', 'QDateEdit', ]]):
+                if any([W.inherits(tp) for tp in [QLineEdit, QTextEdit, QCheckBox, QComboBox, QDateEdit, ]]):
                     W.setProperty('dirty', dirty)
         
         # enable btnCommit if anything dirty
