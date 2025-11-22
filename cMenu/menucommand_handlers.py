@@ -43,6 +43,7 @@ from .utils import (cComboBoxFromDict, cQFmFldWidg, cQFmNameLabel, cQFmNameLabel
     pleaseWriteMe,  
     )
 
+from app.database import app_Session
 
 # copied from cMenu - if you change it here, change it there
 _NUM_menuBUTTONS:int = 20
@@ -1470,7 +1471,7 @@ class cEditMenu(QWidget):
             if dirty: self.setProperty('dirty',True)
         else:
             for W in self.children():
-                if any([W.inherits(tp) for tp in [QLineEdit, QTextEdit, QCheckBox, QComboBox, QDateEdit, ]]):
+                if isinstance(W, (QLineEdit, QTextEdit, QCheckBox, QComboBox, QDateEdit, )):
                     W.setProperty('dirty', dirty)
         
         # enable btnCommit if anything dirty

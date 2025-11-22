@@ -1,6 +1,7 @@
 from typing import (Dict, List, Any, Type, )
 from collections.abc import (Callable, )
 from functools import (partial, )
+from enum import (Enum, auto, )
 
 from PySide6.QtCore import (
     Qt, Slot, Signal, 
@@ -30,6 +31,21 @@ from .SQLAlcTools import (get_primary_key_column, )
 
 from app.database import app_Session
 
+
+class cQFmConstants(Enum):
+    """Constants for form widget configurations."""
+    # FldWidg_LineEdit = auto()
+    # FldWidg_ComboBox = auto()
+    # FldWidg_CheckBox = auto()
+    # FldWidg_TextEdit = auto()
+    # FldWidg_PlainTextEdit = auto()
+    # FldWidg_DateEdit = auto()
+    # FldWidg_DataList = auto()
+    flagInternalVarField = '+'
+    flagLookupField = '@'
+    pageFixedTop = -1
+    pageFixedBottom = -2
+# endclass cQFmConstants
 
 class cQFmNameLabel(QLabel):
     """A styled QLabel for displaying form titles.
@@ -551,6 +567,10 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
     def setModelField(self, fldName: str) -> None:
         """Set the model field name."""
         self._modlField = fldName
+    
+    def isInternalVarField(self) -> bool:
+        """Check if the field is an internal variable field."""
+        return self._modlField.startswith(cQFmConstants.flagInternalVarField.value)
 
     # ------------------------------
     # Internal helpers
@@ -558,19 +578,23 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
 
     def loadFromRecord(self, rec):
         """Load the ORM record value into the widget."""
-        val = getattr(rec, self._modlField, None) if rec else None
-        self._last_value = val
-        self._setWidgetValue(val)
-        self.setDirty(False, sendSignal=False)
+        if not self.isInternalVarField():
+            val = getattr(rec, self._modlField, None) if rec else None
+            self._last_value = val
+            self._setWidgetValue(val)
+            self.setDirty(False, sendSignal=False)
+        # endif internal var field
+    # loadFromRecord
 
     def saveToRecord(self, rec):
         """Write widget value back into ORM record, if dirty."""
-        if not self._dirty:
+        if not self.isDirty() or self.isInternalVarField():
             return
         new_val = self._getWidgetValue()
         setattr(rec, self._modlField, new_val)
         self._last_value = new_val
         self.setDirty(False, sendSignal=False)
+    # saveToRecord
 
     def isDirty(self, widg = None) -> bool:
         """Check if this field widget has unsaved changes.
@@ -578,6 +602,8 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
         Returns:
             bool: True if the current value differs from the loaded value.
         """
+        if self.isInternalVarField():
+            return False
         if widg is None:
             widg = self
         return widg._dirty
@@ -589,6 +615,9 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
             dirty (bool, optional): Whether to mark as dirty. Defaults to True.
             sendSignal (bool, optional): Whether to emit dirtyChanged signal. Defaults to True.
         """
+        if self.isInternalVarField():
+            self._dirty = False
+            return
         if self._dirty == dirty:
             return
         self._dirty = dirty
@@ -1097,28 +1126,9 @@ class cSimpleRecordForm_Base(QWidget):
         """
         raise NotImplementedError
 
-        # layoutMain = QVBoxLayout(self)
-        # self.layoutForm = QTabWidget() # (was QGridLayout())
-        # self.layoutButtons = QHBoxLayout()  # may get redefined in _addActionButtons
-        # self._statusBar = QStatusBar(self)
-
-        # self.layoutFormHdr = QHBoxLayout()
-        # lblFormName = cQFmNameLabel(self.tr(self._formname), self)
-        # self.layoutFormHdr.addWidget(lblFormName)
+        ## see cSimpRecForm for an example implementation
+        ##
         
-        # self._newrecFlag = QLabel("New Record", self)
-        # fontNewRec = QFont()
-        # fontNewRec.setBold(True)
-        # fontNewRec.setPointSize(10)
-        # fontNewRec.setItalic(True)
-        # self._newrecFlag.setFont(fontNewRec)
-        # self._newrecFlag.setStyleSheet("color: red;")
-        # self.layoutFormHdr.addWidget(self._newrecFlag)
-        # self._newrecFlag.setVisible(False)
-        
-        # self.setWindowTitle(self.tr(self._formname))
-        
-        # return layoutMain
     # _buildFormLayout
 
     def _buildPages(self, layoutFormPages: QTabWidget) -> None:
@@ -1148,6 +1158,15 @@ class cSimpleRecordForm_Base(QWidget):
                 return None
         else:
             tabidx = idx
+        #endif idx type
+        
+        # is idx one of the special values?
+        if tabidx == cQFmConstants.pageFixedTop.value:
+            return self.layoutFormFixedTop if isinstance(self.layoutFormFixedTop, QGridLayout) else None
+        elif tabidx == cQFmConstants.pageFixedBottom.value:
+            return self.layoutFormFixedBottom if isinstance(self.layoutFormFixedBottom, QGridLayout) else None
+        # endif special values
+        
         assert isinstance(self.layoutFormPages, QTabWidget), "layoutFormPages must be a QTabWidget"
         widg = self.layoutFormPages.widget(tabidx)
         if widg is None:
@@ -1165,27 +1184,6 @@ class cSimpleRecordForm_Base(QWidget):
         # or return self.layoutForm.count() # mebbe not - see _buildPages
     # numPages
     
-    def _bindField(self, fieldNameKey: str, widget: QWidget) -> None:
-        """Register field and connect to changeField."""
-        fldDef = self.fieldDefs.get(fieldNameKey)
-        if not fldDef:
-            raise KeyError(f"Field '{fieldNameKey}' not found in fieldDefs")
-        lookup = (fieldNameKey[0] == '@')
-        fieldName = fieldNameKey if not lookup else fieldNameKey[1:]
-        subFormElmnt = hasattr(fldDef, 'subform_class')
-
-        if not lookup:
-            self._formWidgets[fieldNameKey] = widget
-
-        if isinstance(widget, cQFmFldWidg) and not lookup and not subFormElmnt:
-            widget.setModelField(fieldName)
-
-        if isinstance(widget, cQFmFldWidg):
-            widget.signalFldChanged.connect(lambda *_: self.changeField(widget, widget.modelField(), widget.Value()))
-        elif isinstance(widget, cQFmLookupWidg):        # lookup widgets not supported in subforms (for now)
-            widget.signalLookupSelected.connect(lambda *_: self.changeField(widget, widget._lookup_field, widget.Value()))
-        #endif isinstance(widget)
-    # bindField
     def _placeFields(self, layoutFormPages:QTabWidget, layoutFormFixedTop: QGridLayout|None, layoutFormFixedBottom: QGridLayout|None, lookupsAllowed: bool = True) -> None:
         """
         Build widgets and wrap them into _cSimpRecFmElmnt_Base adapters.
@@ -1220,8 +1218,10 @@ class cSimpleRecordForm_Base(QWidget):
             # fldNameKey indicates a lookup field if the field name starts with '@'
             # lookup will be the boolean flag
             # fldName is the actual field name
-            isLookup = (fldNameKey[0] == '@')
-            fldName = fldNameKey if not isLookup else fldNameKey[1:]
+            isLookup = (fldNameKey.startswith(cQFmConstants.flagLookupField.value))
+            isInternalVarField = (fldNameKey.startswith(cQFmConstants.flagInternalVarField.value))
+            fldName = fldNameKey if not isLookup else fldNameKey[1:]      # TODO: offset by length of flagLookupField instead of constant 1
+
             SubFormCls = fldDef.get("subform_class", None)
             isSubFormElmnt = (SubFormCls is not None)
 
@@ -1313,22 +1313,23 @@ class cSimpleRecordForm_Base(QWidget):
                     W.setStyleSheet(f"background-color: {attrVal};") if hasattr(W, 'setStyleSheet') else W.setProperty('bgColor', attrVal) # type: ignore
             #endif isinstance(widget, (cQFmFldWidg, cQFmLookupWidg)):
 
-            # Save references
-            #TODO: move _bindField code here ??
-            self._bindField(fldNameKey, widget)
+            # Register field and connect to changeField
+            if not isLookup:  # or isInternalVarField ??
+                self._formWidgets[fldNameKey] = widget
+
+            # remove - this was done in the constructor
+            # if isinstance(widget, cQFmFldWidg) and not isLookup and not isSubFormElmnt:
+            #     widget.setModelField(fldName)
+
+            if isinstance(widget, cQFmFldWidg):
+                widget.signalFldChanged.connect(lambda *_: self.changeField(widget, widget.modelField(), widget.Value()))           # type: ignore      # why does this err show up anyway ??
+            elif isinstance(widget, cQFmLookupWidg):        # lookup widgets not supported in subforms (for now)
+                widget.signalLookupSelected.connect(lambda *_: self.changeField(widget, widget._lookup_field, widget.Value()))      # type: ignore      # why does this err show up anyway ??
+            #endif isinstance(widget)
 
             # Place in layout
             if isinstance(pos, tuple) and len(pos) >= 2:
-                if fmPg == -1:
-                    # fixed top layout
-                    fmLayout = layoutFormFixedTop
-                elif fmPg == -2:
-                    # fixed bottom layout
-                    fmLayout = layoutFormFixedBottom
-                else:
-                    # page layout
-                    fmLayout = self.FormPage(fmPg)
-                # endif fmPg
+                fmLayout = self.FormPage(fmPg)
                 if fmLayout is None:
                     raise ValueError(f"Form page {fmPg_indef} not found for field '{fldName}'")
                 fmLayout.addWidget(widget, *pos)
@@ -1679,6 +1680,7 @@ class cSimpleRecordForm_Base(QWidget):
 
     @Slot()
     # REVIEW THIS!!!
+    # TODO: Handle internal variable fields
     def changeField(self, wdgt, dbField, wdgt_value, force=False):
         """
         Called when a widget changes.
@@ -1690,7 +1692,12 @@ class cSimpleRecordForm_Base(QWidget):
         """
         # If adapter passed in, grab widget
         widget = wdgt
+        
+        if isinstance(widget, cQFmFldWidg) and widget.isInternalVarField():
+            # internal variable field - do nothing
+            raise NotImplementedError("Internal variable fields not yet supported in changeField")
 
+        # Ignore if noedit
         if getattr(widget, "property", lambda x: False)("noedit"):
             return
 
