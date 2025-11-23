@@ -305,6 +305,37 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
         self._setup_layout(widgType, lblText, alignlblText, lblChkBxYesNo)
     # __init__
 
+    def createWidget(
+        self,
+        widgType: Type[QWidget],
+        choices: Dict|List|None = None,
+        initval: str = ''
+    ) -> QWidget:
+        """Create the appropriate widget based on type."""
+        if issubclass(widgType, cComboBoxFromDict):
+            if not isinstance(choices, dict):
+                # raise TypeError("Expected choices to be a dictionary for cComboBoxFromDict")
+                choices = {}
+            return widgType(choices, self)
+        elif issubclass(widgType, cDataList):
+            if not isinstance(choices, (dict, )):
+                # raise TypeError("Expected choices to be a dictionary or list for cDataList")
+                choices = {}
+            return widgType(choices, initval, self)
+        elif issubclass(widgType, QComboBox):
+            wdgt = widgType(self)
+            if choices is not None:
+                if isinstance(choices, dict):
+                    for key, value in choices.items():
+                        wdgt.addItem(str(value), key)
+                else:
+                    wdgt.addItems([str(item) for item in choices])
+            return wdgt
+        else:
+            return widgType(self)
+        # endif widgType class
+    # createWidget
+
     def _setup_widget_behavior(
         self,
         widgType: Type[QWidget],
@@ -328,6 +359,8 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
             self._setup_checkbox_behavior(wdgt, lblText, lblChkBxYesNo)
         elif issubclass(widgType, QLabel):
             self._setup_label_behavior(wdgt, lblText)
+        elif issubclass(widgType, QPushButton):
+            self._setup_pushbutton_behavior(wdgt, lblText)
         else:
             raise TypeError(f'type {widgType} is not implemented')
     # _setup_widget_behavior
@@ -354,6 +387,7 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
         self.setValue = self._create_datalist_setter(wdgt)
         self.addChoices = wdgt.addChoices
         wdgt.editingFinished.connect(self.fldChanged)
+    # _setup_datalist_behavior
     def _create_datalist_setter(self, wdgt:cDataList|QWidget) -> Callable[[Any], None]:
         """Create a type-safe setter function for cDataList."""
         if not isinstance(wdgt, (cDataList, )):
@@ -386,6 +420,7 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
         self.Value = wdgt.text
         self.setValue = partial(self._setTextstring, wdgt)
         wdgt.editingFinished.connect(self.fldChanged)
+    # _setup_lineedit_behavior
 
     def _setup_label_behavior(self, wdgt: QLabel|QWidget, lblText: str) -> None:
         """Configure behavior for QLabel widgets."""
@@ -398,6 +433,7 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
 
         self.Value = wdgt.text
         self.setValue = partial(self._setTextstring, wdgt)
+    # _setup_label_behavior
 
     def _setup_textedit_behavior(self, wdgt: QTextEdit|QPlainTextEdit|QWidget, lblText: str) -> None:
         """Configure behavior for text edit widgets."""
@@ -411,6 +447,7 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
         self.Value = wdgt.toPlainText
         self.setValue = wdgt.setPlainText
         wdgt.textChanged.connect(self.fldChanged)
+    # _setup_textedit_behavior
 
     def _setup_combobox_behavior(self, wdgt: cComboBoxFromDict|QComboBox|QWidget, lblText: str) -> None:
         """Configure behavior for combo box widgets."""
@@ -428,6 +465,7 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
             self.replaceDict = wdgt.replaceDict
 
         wdgt.activated.connect(self.fldChanged)
+    # _setup_combobox_behavior
     def _create_combobox_setter(self, wdgt:cComboBoxFromDict|QComboBox|QWidget) -> Callable[[Any], None]:
         """Create a type-safe setter function for combo boxes."""
         if not isinstance(wdgt, (cComboBoxFromDict, QComboBox)):
@@ -438,6 +476,7 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
             else:
                 wdgt.setCurrentIndex(wdgt.findData(value))
         return set_combobox_value
+    # _create_combobox_setter
 
     def _setup_dateedit_behavior(self, wdgt: QDateEdit|QWidget, lblText: str) -> None:
         """Configure behavior for date edit widgets."""
@@ -451,6 +490,7 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
         self.Value = lambda: wdgt.date().toPython()
         self.setValue = wdgt.setDate
         wdgt.userDateChanged.connect(self.fldChanged)
+    # _setup_dateedit_behavior
 
     def _setup_checkbox_behavior(
         self,
@@ -479,6 +519,27 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
             self._lblChkYN.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         wdgt.checkStateChanged.connect(self.fldChanged)
+    # _setup_checkbox_behavior
+
+    def _setup_pushbutton_behavior(self, wdgt: QPushButton|QWidget, lblText: str) -> None:
+        """Configure behavior for pushbutton widgets."""
+        if not isinstance(wdgt, QPushButton):
+            raise TypeError("Expected a QPushButton widget")
+        # self._label = QLabel(lblText)
+        self._label = None
+        wdgt.setText(lblText)
+        self.LabelText = wdgt.text
+        self._labelSetLblText = partial(self._setTextstring, wdgt)
+        
+        self.icon = wdgt.icon
+        self.setIcon = wdgt.setIcon
+
+        self.Value = wdgt.text
+        self.setValue = partial(self._setTextstring, wdgt)
+        
+        wdgt.clicked.connect(self.fldChanged)
+        pass
+    # _setup_pushbutton_behavior
 
     def _setup_layout(
         self,
@@ -517,37 +578,6 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
                 layout.addWidget(self._wdgt, 0, 0)
         
         self.setLayout(layout)
-
-    def createWidget(
-        self,
-        widgType: Type[QWidget],
-        choices: Dict|List|None = None,
-        initval: str = ''
-    ) -> QWidget:
-        """Create the appropriate widget based on type."""
-        if issubclass(widgType, cComboBoxFromDict):
-            if not isinstance(choices, dict):
-                # raise TypeError("Expected choices to be a dictionary for cComboBoxFromDict")
-                choices = {}
-            return widgType(choices, self)
-        elif issubclass(widgType, cDataList):
-            if not isinstance(choices, (dict, )):
-                # raise TypeError("Expected choices to be a dictionary or list for cDataList")
-                choices = {}
-            return widgType(choices, initval, self)
-        elif issubclass(widgType, QComboBox):
-            wdgt = widgType(self)
-            if choices is not None:
-                if isinstance(choices, dict):
-                    for key, value in choices.items():
-                        wdgt.addItem(str(value), key)
-                else:
-                    wdgt.addItems([str(item) for item in choices])
-            return wdgt
-        else:
-            return widgType(self)
-        # endif widgType class
-    # createWidget
 
     def setLabelText(self, txt: str) -> None:
         """Set the label text if a label exists."""
@@ -1314,6 +1344,7 @@ class cSimpleRecordForm_Base(QWidget):
             #endif isinstance(widget, (cQFmFldWidg, cQFmLookupWidg)):
 
             # Register field and connect to changeField
+            self.fieldDefs[fldNameKey]['widget'] = widget
             if not isLookup:  # or isInternalVarField ??
                 self._formWidgets[fldNameKey] = widget
 
@@ -1680,7 +1711,7 @@ class cSimpleRecordForm_Base(QWidget):
 
     @Slot()
     # REVIEW THIS!!!
-    # TODO: Handle internal variable fields
+    # DONE: Handle internal variable fields
     def changeField(self, wdgt, dbField, wdgt_value, force=False):
         """
         Called when a widget changes.
@@ -1711,6 +1742,33 @@ class cSimpleRecordForm_Base(QWidget):
         self.showCommitButton()
         # endif wdgt_value
     # changeField
+
+    def changeInternalVarField(self, wdgt, intVarField, wdgt_value):
+        """
+        Called when an internal variable field widget changes.
+        Updates the internal variable field value.
+
+        Args:
+            wdgt: The widget that changed.
+            intVarField: The internal variable field name.
+            wdgt_value: The new value from the widget.
+            force (bool, optional): Whether to force the change even if the value is the same. Defaults to False.
+        """
+        
+        # to be implemented by subclass if needed
+        raise NotImplementedError("changeInternalVarField not implemented")
+    
+        # # Ignore if noedit
+        # if getattr(wdgt, "property", lambda x: False)("noedit"):
+        #     return
+
+        # current_value = getattr(self, intVarField, None)
+        # if current_value == wdgt_value:
+        #     return  # No change
+
+        # setattr(self, intVarField, wdgt_value)
+
+    # changeInternalVarField
 
     @Slot()
     def on_save_clicked(self, *_):
