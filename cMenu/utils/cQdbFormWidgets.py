@@ -1744,6 +1744,7 @@ class cSimpleRecordForm_Base(QWidget):
     # changeField
 
     def changeInternalVarField(self, wdgt, intVarField, wdgt_value):
+    # def changeInternalVarField(self, wdgt):
         """
         Called when an internal variable field widget changes.
         Updates the internal variable field value.

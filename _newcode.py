@@ -603,7 +603,7 @@ class EditMenuTest(cSimpleRecordForm):
         '+CopyMenu': {'widgetType': QPushButton, 'label': 'Copy/Move Menu', 'clickedHandler': 'copyMenu', 
             'page': cQFmConstants.pageFixedTop.value, 'position': (1,4), },
         '+Commit': {'widgetType': QPushButton, 'label': 'Save Changes', 'clickedHandler': 'writeRecord', 
-            'page': cQFmConstants.pageFixedTop.value, 'position': (1,5,2,1), },
+            'page': cQFmConstants.pageFixedTop.value, 'position': (0,5,2,1), },
     }
 
     # more class constants
@@ -738,6 +738,12 @@ class EditMenuTest(cSimpleRecordForm):
         self.loadMenu()
     # __init__
 
+    def _addActionButtons(self, layoutButtons: QBoxLayout | None = None, layoutHorizontal: bool = True, NavActions: List[Tuple[str, QIcon]] | None = None, CRUDActions: List[Tuple[str, QIcon]] | None = None) -> None:
+        # there is no button line on this form
+        self.btnCommit = self.fieldDefs['+Commit'].get('widget')
+        return
+    # _addActionButtons
+    
     def _finalizeMainLayout(self, layoutMain: QVBoxLayout, items: List | tuple) -> None:
         self._menuSOURCE = MenuRecords()
         
@@ -761,7 +767,7 @@ class EditMenuTest(cSimpleRecordForm):
         for bNum in range(_NUM_menuBUTTONS):
             bxFrame[bNum].setLineWidth(1)
             bxFrame[bNum].setFrameStyle(QFrame.Shape.Box|QFrame.Shadow.Plain)
-            y, x = ((bNum % _NUM_menuBTNperCOL), 0 if bNum < _NUM_menuBTNperCOL else 2)
+            y, x = ((bNum % _NUM_menuBTNperCOL)+1, 0 if bNum < _NUM_menuBTNperCOL else 2)
             self.layoutmainMenu.addWidget(bxFrame[bNum],y,x)
             
             self.WmenuItm[bNum] = None      # type: ignore  # later - build WmenuItm before this loop?
@@ -980,7 +986,8 @@ class EditMenuTest(cSimpleRecordForm):
     ########    Update
 
     @Slot(Any)   #type: ignore
-    def changeField(self, wdgt:cQFmFldWidg) -> bool:
+    # def changeField(self, wdgt:cQFmFldWidg) -> bool:
+    def changeField(self, wdgt, intVarField, wdgt_value):
         # move to class var?
         forgnKeys = {   
             'MenuGroup',
@@ -1089,7 +1096,8 @@ class EditMenuTest(cSimpleRecordForm):
                     W.setProperty('dirty', dirty)
         
         # enable btnCommit if anything dirty
-        self.btnCommit.setEnabled(self.property('dirty'))
+        if isinstance(self.btnCommit, QPushButton):
+            self.btnCommit.setEnabled(self.property('dirty'))
     
     def isFormDirty(self) -> bool:
         return self.property('dirty')
@@ -1102,6 +1110,7 @@ class EditMenuTest(cSimpleRecordForm):
     ########    Widget-responding procs
 
     def changeInternalVarField(self, wdgt, intVarField, wdgt_value):
+    # def changeInternalVarField(self, wdgt):
         
         # '+RmvMenu': {'widgetType': QPushButton, 'label': 'Remove Menu', 'clickedHandler': 'rmvMenu', 
         #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,3), },
@@ -1111,6 +1120,9 @@ class EditMenuTest(cSimpleRecordForm):
         #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,4), },
         # '+Commit': {'widgetType': QPushButton, 'label': 'Save Changes', 'clickedHandler': 'writeRecord', 
         #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,5,2,1), },
+        # assert isinstance(wdgt, cQFmFldWidg), "wdgt is not a cQFmFldWidg"
+        # intVarField = wdgt.modelField()
+        
         if intVarField == '+RmvMenu':
             self.rmvMenu()
         elif intVarField == '+NewMenuGroup':
