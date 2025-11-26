@@ -987,28 +987,14 @@ class EditMenuTest(cSimpleRecordForm):
 
     @Slot(Any)   #type: ignore
     # def changeField(self, wdgt:cQFmFldWidg) -> bool:
-    def changeField(self, wdgt, intVarField, wdgt_value):
-        # move to class var?
-        forgnKeys = {   
-            'MenuGroup',
-            }
-        # move to class var?
-        valu_transform_flds = {
-            'GroupName',
-            }
+    def changeField(self, wdgt, dbField, wdgt_value):
+
         cRec = self.currRec()
-        dbField = wdgt.modelField()
 
-        wdgt_value = wdgt.Value()
-
-        if dbField in forgnKeys:
-            dbField += '_id'
-        if dbField in valu_transform_flds:
-            # wdgt_value = valu_transform_flds[dbField][1](wdgt_value)
-            pass
-
+        super().changeField(wdgt, dbField, wdgt_value)
+        
         if wdgt_value or isinstance(wdgt_value,bool):
-            if dbField != 'GroupName':  # GroupName belongs to cRec.MenuGroup; persist only at final write
+            if dbField != '+GroupName':  # GroupName belongs to cRec.MenuGroup; persist only at final write
                 assert cRec is not None, "Current record is None"
                 cRec.setValue(str(dbField), wdgt_value)
             self.setFormDirty(wdgt, True)
@@ -1028,7 +1014,7 @@ class EditMenuTest(cSimpleRecordForm):
         
         # check other traps later
         
-        fldmenuGroupName = self.fieldDefs['GroupName'].get('widget')  # type: ignore
+        fldmenuGroupName = self.fieldDefs['+GroupName'].get('widget')  # type: ignore
         
         if self.isWdgtDirty(fldmenuGroupName):  # type: ignore
             grpstmt = select(menuGroups).where(menuGroups.id == self.intmenuGroup)
@@ -1109,9 +1095,8 @@ class EditMenuTest(cSimpleRecordForm):
     ##########################################
     ########    Widget-responding procs
 
-    def changeInternalVarField(self, wdgt, intVarField, wdgt_value):
     # def changeInternalVarField(self, wdgt):
-        
+    def changeInternalVarField(self, wdgt, intVarField, wdgt_value):
         # '+RmvMenu': {'widgetType': QPushButton, 'label': 'Remove Menu', 'clickedHandler': 'rmvMenu', 
         #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,3), },
         # '+NewMenuGroup': {'widgetType': QPushButton, 'label': 'New Menu Group', 'clickedHandler': 'createNewMenuGroup', 
@@ -1122,15 +1107,16 @@ class EditMenuTest(cSimpleRecordForm):
         #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,5,2,1), },
         # assert isinstance(wdgt, cQFmFldWidg), "wdgt is not a cQFmFldWidg"
         # intVarField = wdgt.modelField()
-        
-        if intVarField == '+RmvMenu':
-            self.rmvMenu()
-        elif intVarField == '+NewMenuGroup':
-            self.createNewMenuGroup()
-        elif intVarField == '+CopyMenu':
-            self.copyMenu()
-        elif intVarField == '+Commit':
-            self.writeRecord()
+        _internalVarFields = {
+            '+RmvMenu': self.rmvMenu, 
+            '+NewMenuGroup': self.createNewMenuGroup, 
+            '+CopyMenu': self.copyMenu, 
+            '+Commit': self.writeRecord,
+            '+GroupName': lambda: None,  # GroupName belongs to cRec.MenuGroup; persist only at final write
+            }
+                
+        if intVarField in _internalVarFields:
+            _internalVarFields[intVarField]()
         else:
             raise ValueError(f"Unknown internal variable field: {intVarField}")
         # endif

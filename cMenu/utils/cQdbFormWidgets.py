@@ -1353,9 +1353,9 @@ class cSimpleRecordForm_Base(QWidget):
             #     widget.setModelField(fldName)
 
             if isinstance(widget, cQFmFldWidg):
-                widget.signalFldChanged.connect(lambda *_: self.changeField(widget, widget.modelField(), widget.Value()))           # type: ignore      # why does this err show up anyway ??
-            elif isinstance(widget, cQFmLookupWidg):        # lookup widgets not supported in subforms (for now)
-                widget.signalLookupSelected.connect(lambda *_: self.changeField(widget, widget._lookup_field, widget.Value()))      # type: ignore      # why does this err show up anyway ??
+                widget.signalFldChanged.connect(lambda *_, w=widget: self.changeFieldSlot(w))
+            elif isinstance(widget, cQFmLookupWidg):
+                widget.signalLookupSelected.connect(lambda *_, w=widget: self.changeFieldSlot(w))
             #endif isinstance(widget)
 
             # Place in layout
@@ -1710,8 +1710,12 @@ class cSimpleRecordForm_Base(QWidget):
     ########    Update
 
     @Slot()
-    # REVIEW THIS!!!
-    # DONE: Handle internal variable fields
+    def changeFieldSlot(self, widget: QWidget | None = None):
+        # sender() returns the widget that triggered the signal
+        if isinstance(widget, cQFmFldWidg):
+            self.changeField(widget, widget.modelField(), widget.Value())
+        if isinstance(widget, cQFmLookupWidg):
+            self.changeField(widget, widget._lookup_field, widget.Value())
     def changeField(self, wdgt, dbField, wdgt_value, force=False):
         """
         Called when a widget changes.
@@ -1725,8 +1729,8 @@ class cSimpleRecordForm_Base(QWidget):
         widget = wdgt
         
         if isinstance(widget, cQFmFldWidg) and widget.isInternalVarField():
-            # internal variable field - do nothing
-            raise NotImplementedError("Internal variable fields not yet supported in changeField")
+            self.changeInternalVarField(widget, dbField, wdgt_value)
+            # raise NotImplementedError("Internal variable fields not yet supported in changeField")
 
         # Ignore if noedit
         if getattr(widget, "property", lambda x: False)("noedit"):
