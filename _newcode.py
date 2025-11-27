@@ -511,22 +511,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     # ##########################################
     # ########    Record Status
 
-    def isNewRecord(self) -> bool:
-        # temporary for testing
-        return super().isNewRecord()
-    # isNewRecord
-    
-    @Slot(Any, bool)   #type: ignore
-    def setDirty(self, wdgt, dirty: bool = True):
-        # temporary for testing
-        super().setDirty(wdgt, dirty)
-    # setFormDirty
-    
-    def isDirty(self, widg = None) -> bool:
-        #temporary for testing
-        return super().isDirty(widg)
-    # isFormDirty
-    
+
     ##########################################
     ########    Widget-responding procs
 
@@ -602,7 +587,7 @@ class EditMenuTest(cSimpleRecordForm):
             'page': cQFmConstants.pageFixedTop.value, 'position': (0,4), },
         '+CopyMenu': {'widgetType': QPushButton, 'label': 'Copy/Move Menu', 'clickedHandler': 'copyMenu', 
             'page': cQFmConstants.pageFixedTop.value, 'position': (1,4), },
-        '+Commit': {'widgetType': QPushButton, 'label': 'Save Changes', 'clickedHandler': 'writeRecord', 
+        '+Commit': {'widgetType': QPushButton, 'label': '\nSave\nChanges\n', 'clickedHandler': 'writeRecord', 
             'page': cQFmConstants.pageFixedTop.value, 'position': (0,5,2,1), },
     }
 
@@ -732,7 +717,8 @@ class EditMenuTest(cSimpleRecordForm):
 
         super().__init__(parent=parent)
         
-        self.fldmenuGroup = self.fieldDefs['@MenuGroup_id'].get('widget') 
+        # self.fldmenuGroup = self.fieldDefs['@MenuGroup_id'].get('widget') 
+        self.fldmenuGroup = self._lookupFrmElements['@MenuGroup_id']
         self.fldmenuGroupName = self._formWidgets.get('+GroupName') 
 
         self.loadMenu()
@@ -969,7 +955,7 @@ class EditMenuTest(cSimpleRecordForm):
             self.currentMenu = SRC.menuDBRecs(menuGroup, menuID)
             # self.currRec = self.movetoutil_findrecwithvalue(self.currentMenu, 'OptionNumber', 0)
             self.setcurrRec(self.currentMenu[0])  # am I safe in assuming existence?
-            self.setFormDirty(self, False)       # should this be in displayMenu ?
+            self.setDirty(False)       # should this be in displayMenu ?
             self.displayMenu()
         else:
             # menu doesn't exist; say so
@@ -997,7 +983,7 @@ class EditMenuTest(cSimpleRecordForm):
             if dbField != '+GroupName':  # GroupName belongs to cRec.MenuGroup; persist only at final write
                 assert cRec is not None, "Current record is None"
                 cRec.setValue(str(dbField), wdgt_value)
-            self.setFormDirty(wdgt, True)
+            wdgt.setDirty(True)
         
             return True
         else:
@@ -1007,16 +993,17 @@ class EditMenuTest(cSimpleRecordForm):
     
     @Slot()
     def writeRecord(self):
-        if not self.isFormDirty():
+        if not self.isDirty():
             return
         
-        cRec = self.currRec
+        cRec = self.currRec()
         
         # check other traps later
         
-        fldmenuGroupName = self.fieldDefs['+GroupName'].get('widget')  # type: ignore
+        # fldmenuGroupName = self.fieldDefs['+GroupName'].get('widget')  # type: ignore
+        fldmenuGroupName = self._formWidgets['+GroupName']
         
-        if self.isWdgtDirty(fldmenuGroupName):  # type: ignore
+        if fldmenuGroupName.isDirty():  # type: ignore
             grpstmt = select(menuGroups).where(menuGroups.id == self.intmenuGroup)
             with cMenu_Session() as session:
                 groupRec = session.execute(grpstmt).scalar_one_or_none()
@@ -1035,7 +1022,7 @@ class EditMenuTest(cSimpleRecordForm):
                 session.merge(cRec)
                 session.commit()
 
-        self.setFormDirty(self, False)
+        self.setDirty(False)
     # writeRecord
 
 
@@ -1048,48 +1035,48 @@ class EditMenuTest(cSimpleRecordForm):
         pleaseWriteMe('Remove Menu', parent=self)
         return
         
-        (mGrp, mnu, mOpt) = (self.currRec.MenuGroup, self.currRec.MenuID, self.currRec.OptionNumber)
+        (mGrp, mnu, mOpt) = (self.currRec().MenuGroup, self.currRec().MenuID, self.currRec().OptionNumber)
         
         # verify delete
         
         # remove from db
-        if self.currRec.pk:
-            self.currRec.delete()
+        if self.currRec().pk:
+            self.currRec().delete()
         
         # replace with an "next" record
-        self.currRec = menuItems_QT(
+        self.setcurrRec(menuItems_QT(
             MenuGroup = mGrp,
             MenuID = mnu,
             OptionNumber = mOpt,
-            )
+            ))
 
 
     ##########################################
     ########    CRUD support
 
-    @Slot(QWidget, bool)   #type: ignore
-    def setFormDirty(self, wdgt:QWidget, dirty:bool = True):
-        if wdgt.property('noedit'):
-            return
+    # @Slot(QWidget, bool)   #type: ignore
+    # def setFormDirty(self, wdgt:QWidget, dirty:bool = True):
+    #     if wdgt.property('noedit'):
+    #         return
         
-        wdgt.setProperty('dirty', dirty)
-        # if wdgt === self, set all children dirty
-        if wdgt is not self:
-            if dirty: self.setProperty('dirty',True)
-        else:
-            for W in self.children():
-                if isinstance(W, (QLineEdit, QTextEdit, QCheckBox, QComboBox, QDateEdit, )):
-                    W.setProperty('dirty', dirty)
+    #     wdgt.setProperty('dirty', dirty)
+    #     # if wdgt === self, set all children dirty
+    #     if wdgt is not self:
+    #         if dirty: self.setProperty('dirty',True)
+    #     else:
+    #         for W in self.children():
+    #             if isinstance(W, (QLineEdit, QTextEdit, QCheckBox, QComboBox, QDateEdit, )):
+    #                 W.setProperty('dirty', dirty)
         
-        # enable btnCommit if anything dirty
-        if isinstance(self.btnCommit, QPushButton):
-            self.btnCommit.setEnabled(self.property('dirty'))
+    #     # enable btnCommit if anything dirty
+    #     if isinstance(self.btnCommit, QPushButton):
+    #         self.btnCommit.setEnabled(self.property('dirty'))
     
-    def isFormDirty(self) -> bool:
-        return self.property('dirty')
+    # def isFormDirty(self) -> bool:
+    #     return self.property('dirty')
 
-    def isWdgtDirty(self, wdgt:QWidget) -> bool:
-        return wdgt.property('dirty')
+    # def isWdgtDirty(self, wdgt:QWidget) -> bool:
+    #     return wdgt.property('dirty')
 
 
     ##########################################
@@ -1117,7 +1104,8 @@ class EditMenuTest(cSimpleRecordForm):
                 
         if intVarField in _internalVarFields:
             _internalVarFields[intVarField]()
-        else:
-            raise ValueError(f"Unknown internal variable field: {intVarField}")
+        # else:
+        #     no need to raise error
+        #     raise ValueError(f"Unknown internal variable field: {intVarField}")
         # endif
     # changeInternalVarField

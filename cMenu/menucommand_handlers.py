@@ -863,21 +863,6 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     # ##########################################
     # ########    Record Status
 
-    def isNewRecord(self) -> bool:
-        # temporary for testing
-        return super().isNewRecord()
-    # isNewRecord
-    
-    @Slot(Any, bool)   #type: ignore
-    def setDirty(self, wdgt, dirty: bool = True):
-        # temporary for testing
-        super().setDirty(wdgt, dirty)
-    # setFormDirty
-    
-    def isDirty(self, widg = None) -> bool:
-        #temporary for testing
-        return super().isDirty(widg)
-    # isFormDirty
     
     ##########################################
     ########    Widget-responding procs
