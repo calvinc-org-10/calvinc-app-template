@@ -573,9 +573,11 @@ class EditMenuTest(cSimpleRecordForm):
     _ssnmaker = cMenu_Session
     _formname = 'Edit Menu Test'
     fieldDefs = {
-        '@MenuGroup_id': {'widgetType': cComboBoxFromDict, 'label': 'Menu Group', 'choices': lambda self: self.dictmenuGroup(), 'lookupHandler': lambda self:self.loadMenuWithGroupID(), 
+        '@MenuGroup_id': {'widgetType': cComboBoxFromDict, 'label': 'Menu Group', 'lookupHandler': 'loadMenuWithGroupID', 
+            # 'choices': lambda: self.dictmenuGroup(), 
             'page': cQFmConstants.pageFixedTop.value, 'position': (0,0), },
-        '@MenuID': {'widgetType': cComboBoxFromDict, 'label': 'Menu ID', 'choices': lambda self: self.dictmenus(self.intmenuGroup), 'lookupHandler': lambda self: self.loadMenuWithMenuID(), 
+        '@MenuID': {'widgetType': cComboBoxFromDict, 'label': 'Menu ID',  'lookupHandler': 'loadMenuWithMenuID', 
+            # 'choices': lambda self: self.dictmenus(self.intmenuGroup), 
             'page': cQFmConstants.pageFixedTop.value, 'position': (1,0), },
         '+GroupName': {'widgetType': QLineEdit, 'label': 'Menu Group Name', 
             'page': cQFmConstants.pageFixedTop.value, 'position': (0,2,1,2), },
@@ -719,8 +721,9 @@ class EditMenuTest(cSimpleRecordForm):
         
         # self.fldmenuGroup = self.fieldDefs['@MenuGroup_id'].get('widget') 
         self.fldmenuGroup = self._lookupFrmElements['@MenuGroup_id']
+        self.fldmenuGroup.replaceDict(self.dictmenuGroup())    # type: ignore
         self.fldmenuGroupName = self._formWidgets.get('+GroupName') 
-
+        
         self.loadMenu()
     # __init__
 
@@ -880,7 +883,8 @@ class EditMenuTest(cSimpleRecordForm):
         self.fldmenuGroupName.setValue(GpName) # type: ignore
         self.lblnummenuID.display(menuID)
         d = self.dictmenus(menuGroup)
-        fldmenuID = self.fieldDefs['@MenuID'].get('widget')        # self.fldmenuID.replaceDict(dict(d))
+        fldmenuID = self.fieldDefs['@MenuID'].get('widget')        
+        fldmenuID.replaceDict(self.dictmenus(menuGroup))  # type: ignore
         fldmenuID.setValue(menuID) # type: ignore
         fldmenuName = self.fieldDefs['OptionText'].get('widget')  # self.fldmenuID.replaceDict(dict(d))
         fldmenuName.setValue(menuHdrRec.OptionText) # type: ignore
@@ -1109,3 +1113,5 @@ class EditMenuTest(cSimpleRecordForm):
         #     raise ValueError(f"Unknown internal variable field: {intVarField}")
         # endif
     # changeInternalVarField
+
+# class cWidgetMenuItem
