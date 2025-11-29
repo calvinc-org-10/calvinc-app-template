@@ -16,6 +16,8 @@ cMenu_Session = sessionmaker(cMenu_engine)
 
 def get_cMenu_session():
     return cMenu_Session()
+def get_cMenu_sessionmaker():
+    return cMenu_Session
 
 ##########################################################
 ###################    REPOSITORIES    ###################

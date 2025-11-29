@@ -251,6 +251,8 @@ class cMenu(QWidget):
             if appinst is not None:
                 appinst.quit()
         elif CommandNum in MENUCOMMANDS:
+            # command recognized but not yet implemented
+            # TODO: QMessageBox.information ?
             msg = QMessageBox(self)
             msg.setWindowTitle('Command Not Implemented')
             msg.setIcon(QMessageBox.Icon.Information)

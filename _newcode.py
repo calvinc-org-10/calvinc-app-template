@@ -183,6 +183,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     requestMenuReload:Signal = Signal()
 
     class cEdtMnuItmDlg_CopyMove_MenuItm(QDialog):
+
         intCMChoiceCopy:int = 10
         intCMChoiceMove:int = 20
 
@@ -254,70 +255,10 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
             layoutMine.addWidget(self.dlgButtons)
 
             self.setLayout(layoutMine)
-
-        def dictmenuGroup(self) -> Dict[str, int]:
-            # TODO: generalize this to work with any table (return a dict of {id:record})
-            listmenuGroups = recordsetList(menuGroups, retFlds=['GroupName', 'id'], ssnmaker=cMenu_Session, orderby='GroupName')
-            # stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
-            # with cMenu_Session() as session:
-            #     retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
-            retDict = {row['GroupName']: row['id'] for row in listmenuGroups}
-            return retDict
-        def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
-            listmenuItems = recordsetList(menuItems, retFlds=['OptionText', 'MenuID'], where=f'OptionNumber=0 AND MenuGroup_id={mnuGrp}', ssnmaker=cMenu_Session, orderby='MenuID')
-            # stmt = select(menuItems.OptionText, menuItems.MenuID).select_from(menuItems).where(
-            #     menuItems.MenuGroup_id == mnuGrp,
-            #     menuItems.OptionNumber == 0,  # only return the main menu items
-            # ).order_by(menuItems.OptionText)
-            # with cMenu_Session() as session:
-            #     rs = session.execute(stmt).all()
-            #     # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
-            #     retDict = Nochoice | {row.OptionText: row.MenuID for row in rs}
-            retDict = Nochoice | {row['OptionText']: row['MenuID'] for row in listmenuItems}
-            return retDict      # type: ignore
-        def dictmenuOptions(self, mnuID:int) -> Mapping[str, int|None]:
-            mnuGrp:int = self.combobxMenuGroupID.currentData()
-            listmenuItems = recordsetList(menuItems, retFlds=['OptionNumber'], where=f'MenuID={mnuID} AND MenuGroup_id={mnuGrp}', ssnmaker=cMenu_Session)
-            # stmt = select(menuItems.OptionNumber).select_from(menuItems).where(
-            #     menuItems.MenuID == mnuID,
-            #     menuItems.MenuGroup_id == mnuGrp,
-            # )
-            # with cMenu_Session() as session:
-            #     rs = session.execute(stmt).all()
-            #     definedOptions = [rec.OptionNumber for rec in rs]
-            definedOptions = [rec['OptionNumber'] for rec in listmenuItems]
-            # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
-            return Nochoice | { str(n+1): n+1 for n in range(_NUM_menuBUTTONS) if n+1 not in definedOptions }
-
-        @Slot(int)  #type: ignore
-        def loadMenuIDs(self, idx:int):
-            mnuGrp:int = self.combobxMenuGroupID.currentData()
-            # if self.combobxMenuGroupID.currentIndex() != -1:
-            if mnuGrp is not None:
-                self.combobxMenuID.replaceDict(dict(self.dictmenus(mnuGrp)))
-            self.combobxMenuID.setCurrentIndex(-1)
-            self.combobxMenuOption.clear()
-            self.enableOKButton()
-        @Slot(int) #type: ignore
-        def loadMenuOptions(self, idx:int):
-            mnuID:int = self.combobxMenuID.currentData()
-            #if self.combobxMenuID.currentIndex() != -1:
-            if mnuID is not None:
-                self.combobxMenuOption.replaceDict(dict(self.dictmenuOptions(mnuID)))
-            self.combobxMenuOption.setCurrentIndex(-1)
-            self.enableOKButton()
-        @Slot(int)  #type: ignore
-        def menuOptionChosen(self, idx:int):
-            self.enableOKButton()
-        def enableOKButton(self):
-            if not self.dlgButtons:
-                return
-            all_GrpIdOption_chosen = all([
-                self.combobxMenuGroupID.currentIndex() != -1,
-                self.combobxMenuID.currentIndex() != -1,
-                self.combobxMenuOption.currentIndex() != -1,
-            ])
-            self.dlgButtons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(all_GrpIdOption_chosen)
+        # __init__
+        
+        ##########################################
+        ########    execute this dialog
 
         def exec_CM_MItm(self) -> Tuple[int|bool, bool, Tuple[int, int, int]]:
             ret = super().exec()
@@ -331,6 +272,99 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
                 # return (Group, Menu, OptrNum) tuple
                 (chosenMenuGroup, chosenMenuID, chosenMenuOption),
                 )
+        # exec_CM_MItm
+
+        ##########################################
+        ########    menu and Group dicts
+
+        def dictmenuGroup(self) -> Dict[str, int]:
+            # # TODO: generalize this to work with any table (return a dict of {id:record})
+            # listmenuGroups = recordsetList(menuGroups, retFlds=['GroupName', 'id'], ssnmaker=cMenu_Session, orderby='GroupName')
+            # # stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
+            # # with cMenu_Session() as session:
+            # #     retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
+            # retDict = {row['GroupName']: row['id'] for row in listmenuGroups}
+            # return retDict
+            return MenuRecords.menuGroupDict()
+        # dictmenuGroup
+            
+        def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
+            retDict = Nochoice | MenuRecords.menuListDict(mnuGrp)
+            return retDict      # type: ignore
+        # dictmenus
+        
+        def dictmenuOptions(self, mnuID:int) -> Mapping[str, int|None]:
+            mnuGrp:int = self.combobxMenuGroupID.currentData()
+            listmenuItems = recordsetList(menuItems, retFlds=['OptionNumber'], where=f'MenuID={mnuID} AND MenuGroup_id={mnuGrp}', ssnmaker=cMenu_Session)
+            # stmt = select(menuItems.OptionNumber).select_from(menuItems).where(
+            #     menuItems.MenuID == mnuID,
+            #     menuItems.MenuGroup_id == mnuGrp,
+            # )
+            # with cMenu_Session() as session:
+            #     rs = session.execute(stmt).all()
+            #     definedOptions = [rec.OptionNumber for rec in rs]
+            definedOptions = [rec['OptionNumber'] for rec in listmenuItems]
+            # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
+            return Nochoice | { str(n+1): n+1 for n in range(_NUM_menuBUTTONS) if n+1 not in definedOptions }
+            # MenuRecords.menuDict(mnuGrp, mnuID)
+        # dictmenuOptions
+
+        ##########################################
+        ########    getters/setters
+
+        ##########################################
+        ########    Create
+
+        ##########################################
+        ########    Read
+
+        @Slot(int)  #type: ignore
+        def loadMenuIDs(self, idx:int):
+            mnuGrp:int = self.combobxMenuGroupID.currentData()
+            # if self.combobxMenuGroupID.currentIndex() != -1:
+            if mnuGrp is not None:
+                self.combobxMenuID.replaceDict(dict(self.dictmenus(mnuGrp)))
+            self.combobxMenuID.setCurrentIndex(-1)
+            self.combobxMenuOption.clear()
+            self.enableOKButton()
+        # loadMenuIDs
+        
+        @Slot(int) #type: ignore
+        def loadMenuOptions(self, idx:int):
+            mnuID:int = self.combobxMenuID.currentData()
+            #if self.combobxMenuID.currentIndex() != -1:
+            if mnuID is not None:
+                self.combobxMenuOption.replaceDict(dict(self.dictmenuOptions(mnuID)))
+            self.combobxMenuOption.setCurrentIndex(-1)
+            self.enableOKButton()
+        # loadMenuOptions
+        
+        ##########################################
+        ########    Update
+
+        ##########################################
+        ########    Delete
+
+        ##########################################
+        ########    object status
+
+        ##########################################
+        ########    widget-responding procs
+
+        @Slot(int)  #type: ignore
+        def menuOptionChosen(self, idx:int):
+            self.enableOKButton()
+        # menuOptionChosen
+        def enableOKButton(self):
+            if not self.dlgButtons:
+                return
+            all_GrpIdOption_chosen = all([
+                self.combobxMenuGroupID.currentIndex() != -1,
+                self.combobxMenuID.currentIndex() != -1,
+                self.combobxMenuOption.currentIndex() != -1,
+            ])
+            self.dlgButtons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(all_GrpIdOption_chosen)
+        # enableOKButton
 
 
     def __init__(self, menuitmRec:menuItems, parent:QWidget = None):   # type: ignore
@@ -564,6 +598,14 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
             self.fillFormFromcurrRec()
 
             self.requestMenuReload.emit()   # let listeners know we need a menu reload
+            
+            # announce success
+            copyword = 'copied' if CMChoiceCopy else 'moved'
+            QMessageBox.information(self,
+                self.tr(f"Menu Option {copyword}"),
+                self.tr(f"Menu option {mnuGrp}, {mnuID}, {optNum} successfully {copyword} to {newMnuID[0]}, {newMnuID[1]}, {newMnuID[2]}.")
+                )
+
         # #endif retval
         return
     # copyMenuOption

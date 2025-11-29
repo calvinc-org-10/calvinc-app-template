@@ -3,7 +3,7 @@ from typing import (Any, Dict, List, Optional, )
 from sqlalchemy import Row, RowMapping, Select, Table, select, text
 
 from .menucommand_constants import (MENUCOMMANDS, COMMANDNUMBER, )
-from .database import cMenu_Session
+from .database import get_cMenu_session, get_cMenu_sessionmaker
 
 from .utils import (retListofQSQLRecord, recordsetList, select_with_join_excluding, )
 
@@ -42,44 +42,49 @@ from .models import menuGroups, menuItems
 
 class MenuRecords:
     """A class for managing menu items in the database."""
+    # all methods of this class are classmethods
     
     _tbl = menuItems
     _tblGroup = menuGroups
 
-    def __init__(self):
-        self.session = None
+    # def __init__(self):
+    #     self.session = None
 
-    def __enter__(self):
-        self.session = cMenu_Session()
-        return self
+    # def __enter__(self):
+    #     self.session = get_cMenu_session
+    #     return self
     
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.session:
-            if exc_type is None:
-                self.session.commit()
-            else:
-                self.session.rollback()
-            self.session.close()
+    # def __exit__(self, exc_type, exc_val, exc_tb):
+    #     if self.session:
+    #         if exc_type is None:
+    #             self.session.commit()
+    #         else:
+    #             self.session.rollback()
+    #         self.session.close()
 
-    def create(self, persist:bool = True, **kwargs) -> menuItems:
+    @classmethod
+    def create(cls, persist:bool = True, **kwargs) -> menuItems:
         """Create a new menu item record."""
-        new_item = self._tbl(**kwargs)
+        new_item = cls._tbl(**kwargs)
         if persist:
-            with cMenu_Session() as session:
+            with get_cMenu_session() as session:
                 session.add(new_item)
                 session.commit()
         #endif
         return new_item
     
-    def get(self, record_id: int) -> Optional[menuItems]:
+    @classmethod
+    def get(cls, record_id: int) -> Optional[menuItems]:
         """Get a menu item by its primary key."""
-        with cMenu_Session() as session:
-            return session.get(self._tbl, record_id)
+        with get_cMenu_session() as session:
+            return session.get(cls._tbl, record_id)
+        
     
-    def update(self, record_id: int, **kwargs) -> Optional[menuItems]:
+    @classmethod
+    def update(cls, record_id: int, **kwargs) -> Optional[menuItems]:
         """Update an existing menu item record."""
-        with cMenu_Session() as session:
-            item = session.get(self._tbl, record_id)
+        with get_cMenu_session() as session:
+            item = session.get(cls._tbl, record_id)
             if item:
                 for key, value in kwargs.items():
                     setattr(item, key, value)
@@ -87,71 +92,77 @@ class MenuRecords:
                 return item
         return None
     
-    def delete(self, record_id: int) -> bool:
+    @classmethod
+    def delete(cls, record_id: int) -> bool:
         """Delete a menu item record."""
-        with cMenu_Session() as session:
-            item = session.get(self._tbl, record_id)
+        with get_cMenu_session() as session:
+            item = session.get(cls._tbl, record_id)
             if item:
                 session.delete(item)
                 session.commit()
                 return True
         return False
     
-    def menuAttr(self, mGroup: int, mID: int, Opt: int, AttrName: str) -> Any:
+    @classmethod
+    def menuAttr(cls, mGroup: int, mID: int, Opt: int, AttrName: str) -> Any:
         """Get a specific attribute from a menu item."""
-        stmt = select(getattr(self._tbl, AttrName)).where(
-            self._tbl.MenuGroup_id == mGroup,
-            self._tbl.MenuID == mID,
-            self._tbl.OptionNumber == Opt
+        stmt = select(getattr(cls._tbl, AttrName)).where(
+            cls._tbl.MenuGroup_id == mGroup,
+            cls._tbl.MenuID == mID,
+            cls._tbl.OptionNumber == Opt
         )
-        with cMenu_Session() as session:
+        with get_cMenu_session() as session:
             return session.scalar(stmt)
     
-    def minMenuID_forGroup(self, mGroup: int) -> Optional[int]:
+    @classmethod
+    def minMenuID_forGroup(cls, mGroup: int) -> Optional[int]:
         """
         Returns the minimum MenuID for the given MenuGroup.
         """
-        stmt = select(self._tbl.MenuID).where(
-            self._tbl.MenuGroup_id == mGroup,
-            self._tbl.OptionNumber == 0
-        ).order_by(self._tbl.MenuID.asc())
-        with cMenu_Session() as session:
+        stmt = select(cls._tbl.MenuID).where(
+            cls._tbl.MenuGroup_id == mGroup,
+            cls._tbl.OptionNumber == 0
+        ).order_by(cls._tbl.MenuID.asc())
+        with get_cMenu_session() as session:
             retval = session.scalars(stmt).first()
         return retval
 
-    def dfltMenuID_forGroup(self, mGroup:int) -> Optional[int]:
-        stmt = select(self._tbl.MenuID).where(
-            self._tbl.MenuGroup_id == mGroup,
-            self._tbl.Argument.ilike('default'),
-            self._tbl.OptionNumber == 0
+    @classmethod
+    def dfltMenuID_forGroup(cls, mGroup:int) -> Optional[int]:
+        stmt = select(cls._tbl.MenuID).where(
+            cls._tbl.MenuGroup_id == mGroup,
+            cls._tbl.Argument.ilike('default'),
+            cls._tbl.OptionNumber == 0
             )
-        with cMenu_Session() as session:
+        with get_cMenu_session() as session:
             retval = session.scalar(stmt)
         if not retval:
             # If no record found, we need to find the minimum MenuID for this group
-            retval = self.minMenuID_forGroup(mGroup)
+            retval = cls.minMenuID_forGroup(mGroup)
         return retval
 
-    def dfltMenuGroup(self) -> Optional[int]:
+    @classmethod
+    def dfltMenuGroup(cls) -> Optional[int]:
         """
         Returns the minimum MenuGroup.
         """
-        stmt = select(self._tbl.MenuGroup_id).order_by(self._tbl.MenuGroup_id.asc())
-        with cMenu_Session() as session:
+        stmt = select(cls._tbl.MenuGroup_id).order_by(cls._tbl.MenuGroup_id.asc())
+        with get_cMenu_session() as session:
             retval = session.scalars(stmt).first()
         return retval
-    
-    def menuDict(self, mGroup:int, mID:int) ->  Dict[int,Dict[str, Any]]:
+
+    @classmethod
+    def menuDict(cls, mGroup:int, mID:int) ->  Dict[int,Dict[str, Any]]:
         # use selectjoin
         stmt = (
-            select(*self._tbl.__table__.columns)
-            .join(self._tblGroup, self._tbl.MenuGroup_id == self._tblGroup.id)
+            select(*cls._tbl.__table__.columns)
+            .join(cls._tblGroup, cls._tbl.MenuGroup_id == cls._tblGroup.id)
             .where(
-                self._tbl.MenuGroup_id == mGroup,
-                self._tbl.MenuID == mID
+                cls._tbl.MenuGroup_id == mGroup,
+                cls._tbl.MenuID == mID
                 )
             )
-        with cMenu_Session() as session:
+        with get_cMenu_session() as session:
             result = session.execute(stmt).mappings()
             # Convert the result to a dictionary with OptionNumber as keys
             # and dictionaries of field values as values
@@ -159,39 +170,66 @@ class MenuRecords:
             retDict = { row['OptionNumber']: dict(row) for row in result }
         return retDict
 
+    @classmethod
+    def menuGroupDict(cls) -> Dict[str, int]:
+        """Return a dictionary mapping GroupName to id for all menu groups."""
+        # TODO: generalize this to work with any table (return a dict of {id:record})
+        listmenuGroups = recordsetList(menuGroups, retFlds=['GroupName', 'id'], ssnmaker=get_cMenu_sessionmaker(), orderby='GroupName')
+        # stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
+        # with get_cMenu_session() as session:
+        #     retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
+        retDict = {row['GroupName']: row['id'] for row in listmenuGroups}
+        return retDict
+
+    @classmethod
+    def menuListDict(cls, mGroup:int) ->  Dict[str, int]:
+        listmenuItems = recordsetList(menuItems, 
+            retFlds=['OptionText', 'MenuID'], 
+            where=f'OptionNumber=0 AND MenuGroup_id={mGroup}', 
+            ssnmaker=get_cMenu_sessionmaker(), 
+            orderby='MenuID'
+            )
+        retDict = {row['OptionText']: row['MenuID'] for row in listmenuItems}
+        return retDict
+    # menuListDict
+   
+    @classmethod
     # def menuDBRecs(self, mGroup:int, mID:int) ->  QuerySet:
-    def menuDBRecs(self, mGroup:int, mID:int) ->  Dict[int, menuItems]:
+    def menuDBRecs(cls, mGroup:int, mID:int) ->  Dict[int, menuItems]:
         # use selectjoin
         stmt = (
-            select(self._tbl)
-            .join(self._tblGroup, self._tbl.MenuGroup_id == self._tblGroup.id)
+            select(cls._tbl)
+            .join(cls._tblGroup, cls._tbl.MenuGroup_id == cls._tblGroup.id)
             .where(
-                self._tbl.MenuGroup_id == mGroup,
-                self._tbl.MenuID == mID
+                cls._tbl.MenuGroup_id == mGroup,
+                cls._tbl.MenuID == mID
             )
         )
-        with cMenu_Session() as session:
+        with get_cMenu_session() as session:
             result = session.execute(stmt).scalars()
             # Convert the result to a dictionary with OptionNumber as keys
             # and the menuItems objects as values
             retDict = { rec.OptionNumber: rec for rec in result }
         return retDict
 
-    def menuExist(self, mGroup:int, mID:int) ->  bool:
-        stmt = select(self._tbl).where(
-            self._tbl.MenuGroup_id == mGroup,
-            self._tbl.MenuID == mID,
-            self._tbl.OptionNumber == 0
+    @classmethod
+    def menuExist(cls, mGroup:int, mID:int) ->  bool:
+        stmt = select(cls._tbl).where(
+            cls._tbl.MenuGroup_id == mGroup,
+            cls._tbl.MenuID == mID,
+            cls._tbl.OptionNumber == 0
         )
-        with cMenu_Session() as session:
+        with get_cMenu_session() as session:
             result = session.execute(stmt).first()
         # If the result is None, the menu does not exist
         # If the result is a Row or RowMapping, the menu exists
         return (result is not None)
 
     # TODO: generalize this, mebbe to a new class
-    def recordsetList(self, retFlds:int|List[str] = retListofQSQLRecord, filter:Optional[str] = None) -> List:
-        stmt:Select = select_with_join_excluding(self._tbl.__table__, self._tblGroup.__table__, (self._tbl.MenuGroup_id == self._tblGroup.id), ['id'])
+    @classmethod
+    def recordsetList(cls, retFlds:int|List[str] = retListofQSQLRecord, filter:Optional[str] = None) -> List:
+        #TODO: deprecate this method in favor of using recordsetList utility function directly
+        stmt:Select = select_with_join_excluding(cls._tbl.__table__, cls._tblGroup.__table__, (cls._tbl.MenuGroup_id == cls._tblGroup.id), ['id'])
         if retFlds == '*' or (isinstance(retFlds,List) and retFlds[0]=='*') or retFlds == retListofQSQLRecord:
             stmt = stmt
         elif isinstance(retFlds, List):
@@ -210,7 +248,7 @@ class MenuRecords:
             stmt = stmt.where(text(filter))
         #endif filter
 
-        with cMenu_Session() as session:
+        with get_cMenu_session() as session:
             records = session.execute(stmt)
             retList = list(records.mappings())
 
@@ -218,8 +256,10 @@ class MenuRecords:
 
     #enddef recordsetList
 
-    def newgroupnewmenuDict(self, mGroup:int, mID:int) ->  List[Dict]:
+    @classmethod
+    def newgroupnewmenuDict(cls, mGroup:int, mID:int) ->  List[Dict]:
         return newgroupnewmenu_menulist
-    def newmenuDict(self, mGroup:int, mID:int) ->  List[Dict]:
+    @classmethod
+    def newmenuDict(cls, mGroup:int, mID:int) ->  List[Dict]:
         return newmenu_menulist
     
