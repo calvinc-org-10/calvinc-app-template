@@ -3,15 +3,14 @@ import copy
 
 from PySide6.QtCore import (Qt, QObject,
     Signal, Slot, 
-    QAbstractTableModel, QModelIndex, )
+    )
 from PySide6.QtGui import (QFont, QIcon, )
-from PySide6.QtWidgets import ( QBoxLayout, QLayout, QStyle, QTabWidget, 
-    QWidget, QGridLayout, QHBoxLayout, QVBoxLayout, QFormLayout, QFrame, 
-    QTableView, QHeaderView, QScrollArea,
-    QDialog, QMessageBox, QFileDialog, QDialogButtonBox,
+from PySide6.QtWidgets import ( 
+    QLayout, QGridLayout, QBoxLayout, QHBoxLayout, QVBoxLayout, 
+    QWidget, QFrame, 
     QLabel, QLCDNumber, QLineEdit, QTextEdit, QPlainTextEdit, QPushButton, QCheckBox, QComboBox, QDateEdit,
+    QDialog, QMessageBox, QFileDialog, QDialogButtonBox,
     QRadioButton, QGroupBox, QButtonGroup, 
-    QSizePolicy, 
     )
 
 from sqlalchemy import (select, ) 
@@ -23,6 +22,7 @@ from cMenu.models import (menuGroups, menuItems,
     newgroupnewmenu_menulist, )
 from cMenu.menucommand_constants import MENUCOMMANDS, COMMANDNUMBER
 from cMenu.utils import (
+    recordsetList, 
     cQFmConstants, 
     cComboBoxFromDict, cstdTabWidget,
     cQFmFldWidg, cSimpleRecordForm, cSimpleRecordForm_Base,
@@ -257,29 +257,35 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
 
         def dictmenuGroup(self) -> Dict[str, int]:
             # TODO: generalize this to work with any table (return a dict of {id:record})
-            stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
-            with cMenu_Session() as session:
-                retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
+            listmenuGroups = recordsetList(menuGroups, retFlds=['GroupName', 'id'], ssnmaker=cMenu_Session, orderby='GroupName')
+            # stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
+            # with cMenu_Session() as session:
+            #     retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
+            retDict = {row['GroupName']: row['id'] for row in listmenuGroups}
             return retDict
         def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
-            stmt = select(menuItems.OptionText, menuItems.MenuID).select_from(menuItems).where(
-                menuItems.MenuGroup_id == mnuGrp,
-                menuItems.OptionNumber == 0,  # only return the main menu items
-            ).order_by(menuItems.OptionText)
-            with cMenu_Session() as session:
-                rs = session.execute(stmt).all()
-                # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
-                retDict = Nochoice | {row.OptionText: row.MenuID for row in rs}
+            listmenuItems = recordsetList(menuItems, retFlds=['OptionText', 'MenuID'], where=f'OptionNumber=0 AND MenuGroup_id={mnuGrp}', ssnmaker=cMenu_Session, orderby='MenuID')
+            # stmt = select(menuItems.OptionText, menuItems.MenuID).select_from(menuItems).where(
+            #     menuItems.MenuGroup_id == mnuGrp,
+            #     menuItems.OptionNumber == 0,  # only return the main menu items
+            # ).order_by(menuItems.OptionText)
+            # with cMenu_Session() as session:
+            #     rs = session.execute(stmt).all()
+            #     # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
+            #     retDict = Nochoice | {row.OptionText: row.MenuID for row in rs}
+            retDict = Nochoice | {row['OptionText']: row['MenuID'] for row in listmenuItems}
             return retDict      # type: ignore
         def dictmenuOptions(self, mnuID:int) -> Mapping[str, int|None]:
             mnuGrp:int = self.combobxMenuGroupID.currentData()
-            stmt = select(menuItems.OptionNumber).select_from(menuItems).where(
-                menuItems.MenuID == mnuID,
-                menuItems.MenuGroup_id == mnuGrp,
-            )
-            with cMenu_Session() as session:
-                rs = session.execute(stmt).all()
-                definedOptions = [rec.OptionNumber for rec in rs]
+            listmenuItems = recordsetList(menuItems, retFlds=['OptionNumber'], where=f'MenuID={mnuID} AND MenuGroup_id={mnuGrp}', ssnmaker=cMenu_Session)
+            # stmt = select(menuItems.OptionNumber).select_from(menuItems).where(
+            #     menuItems.MenuID == mnuID,
+            #     menuItems.MenuGroup_id == mnuGrp,
+            # )
+            # with cMenu_Session() as session:
+            #     rs = session.execute(stmt).all()
+            #     definedOptions = [rec.OptionNumber for rec in rs]
+            definedOptions = [rec['OptionNumber'] for rec in listmenuItems]
             # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
             return Nochoice | { str(n+1): n+1 for n in range(_NUM_menuBUTTONS) if n+1 not in definedOptions }
 
@@ -553,11 +559,11 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
                 # preserve MenuGroup, MenuID, OptionNumber
                 currRec = self.currRec()
                 currRec.MenuGroup_id, currRec.MenuID, currRec.OptionNumber = mnuGrp, mnuID, optNum
-
-                self.fillFormFromcurrRec()
-
-                self.requestMenuReload.emit()   # let listeners know we need a menu reload
             #endif CMChoiceCopy
+
+            self.fillFormFromcurrRec()
+
+            self.requestMenuReload.emit()   # let listeners know we need a menu reload
         # #endif retval
         return
     # copyMenuOption

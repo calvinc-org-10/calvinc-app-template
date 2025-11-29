@@ -12,7 +12,14 @@ retListofQSQLRecord = -1
 retListofSQLRecord = retListofQSQLRecord
 
 
-def recordsetList(tbl:Table|FromClause, retFlds:int|List[str] = retListofQSQLRecord, filter:str|None = None, ssnmaker: sessionmaker[Session] = cMenu_Session) -> List:
+def recordsetList(
+    # tbl:Table|FromClause,     # _FromClauseArgument ???
+    tbl, 
+    retFlds:int|List[str] = retListofQSQLRecord, 
+    where:str|None = None, 
+    orderby:str|None = None, 
+    ssnmaker: sessionmaker[Session] = cMenu_Session
+    ) -> List:
     """Execute a SELECT query and return a list of record mappings.
     
     Args:
@@ -27,16 +34,27 @@ def recordsetList(tbl:Table|FromClause, retFlds:int|List[str] = retListofQSQLRec
         List: List of record mappings (dictionaries) with the query results.
     """
     if retFlds == '*' or (isinstance(retFlds,List) and retFlds[0]=='*') or retFlds == retListofQSQLRecord:
-        stmt = select(tbl)
+        stmt = select('*')
     elif isinstance(retFlds, List):
-        stmt = select(*[tbl.c[col] for col in retFlds])
-    else:
-        stmt = select(tbl)
-    #endif retFlds
-    if filter:
-        stmt = stmt.where(text(filter))
-    #endif filter
+        # Get a set of all valid column-mapped attribute names
+        valid_orm_cols = set(c.key for c in inspect(tbl).mapper.column_attrs)
 
+        stmt = select(*[
+            getattr(tbl, col) 
+            for col in retFlds 
+            if col in valid_orm_cols
+            ])
+    else:
+        stmt = select('*')
+    #endif retFlds
+    stmt = stmt.select_from(tbl)
+    if where:
+        stmt = stmt.where(text(where))
+    #endif filter
+    if orderby:
+        stmt = stmt.order_by(text(orderby))
+    #endif filter
+    
     with ssnmaker() as session:
         records = session.execute(stmt)
         retList = list(records.mappings())
