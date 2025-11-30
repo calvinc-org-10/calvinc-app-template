@@ -650,6 +650,7 @@ class EditMenuTest(cSimpleRecordForm):
     class wdgtmenuITEM(cWidgetMenuItem):
         def __init__(self, menuitmRec, parent = None):
             super().__init__(menuitmRec, parent)
+    # wdgtmenuITEM
             
     class cEdtMnuDlgGetNewMenuGroupInfo(QDialog):
         def __init__(self, parent:QWidget|None = None):
@@ -692,6 +693,7 @@ class EditMenuTest(cSimpleRecordForm):
                 self.lnedtGroupName.text()         if ret==self.DialogCode.Accepted else None,
                 self.txtedtGroupInfo.toPlainText() if ret==self.DialogCode.Accepted else None,
                 )
+    # cEdtMnuDlgGetNewMenuGroupInfo
     
     class cEdtMnuDlgCopyMoveMenu(QDialog):
         intCMChoiceCopy:int = 10
@@ -775,6 +777,12 @@ class EditMenuTest(cSimpleRecordForm):
         self.loadMenu()
     # __init__
 
+    ##########################################
+    ########    getters/setters
+
+    ##########################################
+    ########    Layout
+
     def _addActionButtons(self, layoutButtons: QBoxLayout | None = None, layoutHorizontal: bool = True, NavActions: List[Tuple[str, QIcon]] | None = None, CRUDActions: List[Tuple[str, QIcon]] | None = None) -> None:
         # there is no button line on this form
         self.btnCommit = self.fieldDefs['+Commit'].get('widget')
@@ -808,9 +816,14 @@ class EditMenuTest(cSimpleRecordForm):
             self.layoutmainMenu.addWidget(bxFrame[bNum],y,x)
             
             self.WmenuItm[bNum] = None      # type: ignore  # later - build WmenuItm before this loop?
+
+        # self.setMinimumWidth(layoutMain.maximumSize().width()+100)
         
         return super()._finalizeMainLayout(layoutMain, items)
     
+    ##########################################
+    ########    menu and Group dicts
+
     def dictmenuGroup(self) -> Dict[str, int]:
         rs = MenuRecords().recordsetList(['id', 'GroupName'])
         retDict = {d['GroupName']:d['id'] for d in rs}
@@ -820,6 +833,72 @@ class EditMenuTest(cSimpleRecordForm):
         rs = tbl.recordsetList(['MenuID', 'OptionText'], f'MenuGroup_id = {mnuGrp} AND OptionNumber = 0')
         retDict = Nochoice | {f"{d['OptionText']} ({d['MenuID']})":d['MenuID'] for d in rs}
         return retDict
+
+    ##########################################
+    ########    Display 
+
+    def displayMenu(self):
+        from cMenu.cMenu import cMenu as cMenuClass
+
+        menuGroup = self.intmenuGroup
+        menuID = self.intmenuID
+        menuItemRecs = self.currentMenu
+        # menuItemRecs.setFilter('OptionNumber=0')
+        # menuHdrRec:QSqlRecord = self.movetoutil_findrecwithvalue(menuItemRecs,'OptionNumber',0)
+        menuHdrRec:menuItems = menuItemRecs[0]
+        
+        # set header elements
+        self.lblnummenuGroupID.display(menuGroup)
+        self.fldmenuGroup.setValue(str(menuGroup)) # type: ignore
+
+        stmt = select(menuGroups.GroupName).where(menuGroups.id == menuGroup)
+        with cMenu_Session() as session:
+            result = session.execute(stmt)
+            group_name = result.scalar_one_or_none()
+        GpName = group_name if group_name else ""
+
+        self.fldmenuGroupName.setValue(GpName) # type: ignore
+        self.lblnummenuID.display(menuID)
+        d = self.dictmenus(menuGroup)
+        fldmenuID = self.fieldDefs['@MenuID'].get('widget')        
+        fldmenuID.replaceDict(self.dictmenus(menuGroup))  # type: ignore
+        fldmenuID.setValue(menuID) # type: ignore
+        fldmenuName = self.fieldDefs['OptionText'].get('widget')  # self.fldmenuID.replaceDict(dict(d))
+        fldmenuName.setValue(menuHdrRec.OptionText) # type: ignore
+
+        for bNum in range(_NUM_menuBUTTONS):
+            y, x = ((bNum % _NUM_menuBTNperCOL)+1, 0 if bNum < _NUM_menuBTNperCOL else 2)
+            bIndx = bNum+1
+            # mnuItmRc = self.movetoutil_findrecwithvalue(menuItemRecs, 'OptionNumber', bIndx)  # this is safer, but the line below is faster and is same in this case
+            mnuItmRc = menuItemRecs.get(bIndx)
+            if not mnuItmRc:
+                mnuItmRc = menuItems(
+                    MenuGroup_id=menuGroup,
+                    MenuID=menuID,
+                    OptionNumber=bIndx,
+                    OptionText = '',
+                    Argument = '',
+                    PWord = ''
+                )
+            oldWdg = self.WmenuItm[bNum]
+            if oldWdg:
+                # remove old widget
+                self.layoutmainMenu.removeWidget(oldWdg)
+                oldWdg.hide()
+                del oldWdg
+
+            self.WmenuItm[bNum] = self.wdgtmenuITEM(mnuItmRc)
+            self.WmenuItm[bNum].requestMenuReload.connect(lambda: self.loadMenu(self.intmenuGroup, self.intmenuID))
+            if isinstance(self.MainMenuWindow, cMenuClass):
+                self.WmenuItm[bNum].requestMenuReload.connect(self.MainMenuWindow.refreshMenu)
+            self.layoutmainMenu.addWidget(self.WmenuItm[bNum],y,x) 
+        # endfor
+
+        mItmH = self.WmenuItm[0].height()
+        mItmW = self.WmenuItm[0].width()
+        # self.layoutManinMenu_scrollerWidget.setMinimumSize(mItmW*2+10, mItmH)
+        
+    # displayMenu
 
     ##########################################
     ########    Create
@@ -908,68 +987,8 @@ class EditMenuTest(cSimpleRecordForm):
         return
     # copyMenu
         
-    def displayMenu(self):
-        from cMenu.cMenu import cMenu as cMenuClass
-
-        menuGroup = self.intmenuGroup
-        menuID = self.intmenuID
-        menuItemRecs = self.currentMenu
-        # menuItemRecs.setFilter('OptionNumber=0')
-        # menuHdrRec:QSqlRecord = self.movetoutil_findrecwithvalue(menuItemRecs,'OptionNumber',0)
-        menuHdrRec:menuItems = menuItemRecs[0]
-        
-        # set header elements
-        self.lblnummenuGroupID.display(menuGroup)
-        self.fldmenuGroup.setValue(str(menuGroup)) # type: ignore
-
-        stmt = select(menuGroups.GroupName).where(menuGroups.id == menuGroup)
-        with cMenu_Session() as session:
-            result = session.execute(stmt)
-            group_name = result.scalar_one_or_none()
-        GpName = group_name if group_name else ""
-
-        self.fldmenuGroupName.setValue(GpName) # type: ignore
-        self.lblnummenuID.display(menuID)
-        d = self.dictmenus(menuGroup)
-        fldmenuID = self.fieldDefs['@MenuID'].get('widget')        
-        fldmenuID.replaceDict(self.dictmenus(menuGroup))  # type: ignore
-        fldmenuID.setValue(menuID) # type: ignore
-        fldmenuName = self.fieldDefs['OptionText'].get('widget')  # self.fldmenuID.replaceDict(dict(d))
-        fldmenuName.setValue(menuHdrRec.OptionText) # type: ignore
-
-        for bNum in range(_NUM_menuBUTTONS):
-            y, x = ((bNum % _NUM_menuBTNperCOL)+1, 0 if bNum < _NUM_menuBTNperCOL else 2)
-            bIndx = bNum+1
-            # mnuItmRc = self.movetoutil_findrecwithvalue(menuItemRecs, 'OptionNumber', bIndx)  # this is safer, but the line below is faster and is same in this case
-            mnuItmRc = menuItemRecs.get(bIndx)
-            if not mnuItmRc:
-                mnuItmRc = menuItems(
-                    MenuGroup_id=menuGroup,
-                    MenuID=menuID,
-                    OptionNumber=bIndx,
-                    OptionText = '',
-                    Argument = '',
-                    PWord = ''
-                )
-            oldWdg = self.WmenuItm[bNum]
-            if oldWdg:
-                # remove old widget
-                self.layoutmainMenu.removeWidget(oldWdg)
-                oldWdg.hide()
-                del oldWdg
-
-            self.WmenuItm[bNum] = self.wdgtmenuITEM(mnuItmRc)
-            self.WmenuItm[bNum].requestMenuReload.connect(lambda: self.loadMenu(self.intmenuGroup, self.intmenuID))
-            if isinstance(self.MainMenuWindow, cMenuClass):
-                self.WmenuItm[bNum].requestMenuReload.connect(self.MainMenuWindow.refreshMenu)
-            self.layoutmainMenu.addWidget(self.WmenuItm[bNum],y,x) 
-        # endfor
-
-        mItmH = self.WmenuItm[0].height()
-        mItmW = self.WmenuItm[0].width()
-        # self.layoutManinMenu_scrollerWidget.setMinimumSize(mItmW*2+10, mItmH)
-        
-    # displayMenu
+    ##########################################
+    ########    Read
 
     @Slot()
     def loadMenuWithGroupID(self, menuGroup:int):
@@ -1019,7 +1038,6 @@ class EditMenuTest(cSimpleRecordForm):
             msg.open()
     # loadMenu
 
-
     ##########################################
     ########    Update
 
@@ -1043,6 +1061,34 @@ class EditMenuTest(cSimpleRecordForm):
         # endif wdgt_value
     # changeField
     
+    # def changeInternalVarField(self, wdgt):
+    def changeInternalVarField(self, wdgt, intVarField, wdgt_value):
+        # '+RmvMenu': {'widgetType': QPushButton, 'label': 'Remove Menu', 'clickedHandler': 'rmvMenu', 
+        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,3), },
+        # '+NewMenuGroup': {'widgetType': QPushButton, 'label': 'New Menu Group', 'clickedHandler': 'createNewMenuGroup', 
+        #     'page': cQFmConstants.pageFixedTop.value, 'position': (0,4), },
+        # '+CopyMenu': {'widgetType': QPushButton, 'label': 'Copy/Move Menu', 'clickedHandler': 'copyMenu', 
+        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,4), },
+        # '+Commit': {'widgetType': QPushButton, 'label': 'Save Changes', 'clickedHandler': 'writeRecord', 
+        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,5,2,1), },
+        # assert isinstance(wdgt, cQFmFldWidg), "wdgt is not a cQFmFldWidg"
+        # intVarField = wdgt.modelField()
+        _internalVarFields = {
+            '+RmvMenu': self.rmvMenu, 
+            '+NewMenuGroup': self.createNewMenuGroup, 
+            '+CopyMenu': self.copyMenu, 
+            '+Commit': self.writeRecord,
+            '+GroupName': lambda: None,  # GroupName belongs to cRec.MenuGroup; persist only at final write
+            }
+                
+        if intVarField in _internalVarFields:
+            _internalVarFields[intVarField]()
+        # else:
+        #     no need to raise error
+        #     raise ValueError(f"Unknown internal variable field: {intVarField}")
+        # endif
+    # changeInternalVarField
+
     @Slot()
     def writeRecord(self):
         if not self.isDirty():
@@ -1077,7 +1123,6 @@ class EditMenuTest(cSimpleRecordForm):
         self.setDirty(False)
     # writeRecord
 
-
     ##########################################
     ########    Delete
 
@@ -1102,64 +1147,10 @@ class EditMenuTest(cSimpleRecordForm):
             OptionNumber = mOpt,
             ))
 
-
     ##########################################
-    ########    CRUD support
-
-    # @Slot(QWidget, bool)   #type: ignore
-    # def setFormDirty(self, wdgt:QWidget, dirty:bool = True):
-    #     if wdgt.property('noedit'):
-    #         return
-        
-    #     wdgt.setProperty('dirty', dirty)
-    #     # if wdgt === self, set all children dirty
-    #     if wdgt is not self:
-    #         if dirty: self.setProperty('dirty',True)
-    #     else:
-    #         for W in self.children():
-    #             if isinstance(W, (QLineEdit, QTextEdit, QCheckBox, QComboBox, QDateEdit, )):
-    #                 W.setProperty('dirty', dirty)
-        
-    #     # enable btnCommit if anything dirty
-    #     if isinstance(self.btnCommit, QPushButton):
-    #         self.btnCommit.setEnabled(self.property('dirty'))
-    
-    # def isFormDirty(self) -> bool:
-    #     return self.property('dirty')
-
-    # def isWdgtDirty(self, wdgt:QWidget) -> bool:
-    #     return wdgt.property('dirty')
-
+    ########    object status
 
     ##########################################
     ########    Widget-responding procs
-
-    # def changeInternalVarField(self, wdgt):
-    def changeInternalVarField(self, wdgt, intVarField, wdgt_value):
-        # '+RmvMenu': {'widgetType': QPushButton, 'label': 'Remove Menu', 'clickedHandler': 'rmvMenu', 
-        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,3), },
-        # '+NewMenuGroup': {'widgetType': QPushButton, 'label': 'New Menu Group', 'clickedHandler': 'createNewMenuGroup', 
-        #     'page': cQFmConstants.pageFixedTop.value, 'position': (0,4), },
-        # '+CopyMenu': {'widgetType': QPushButton, 'label': 'Copy/Move Menu', 'clickedHandler': 'copyMenu', 
-        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,4), },
-        # '+Commit': {'widgetType': QPushButton, 'label': 'Save Changes', 'clickedHandler': 'writeRecord', 
-        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,5,2,1), },
-        # assert isinstance(wdgt, cQFmFldWidg), "wdgt is not a cQFmFldWidg"
-        # intVarField = wdgt.modelField()
-        _internalVarFields = {
-            '+RmvMenu': self.rmvMenu, 
-            '+NewMenuGroup': self.createNewMenuGroup, 
-            '+CopyMenu': self.copyMenu, 
-            '+Commit': self.writeRecord,
-            '+GroupName': lambda: None,  # GroupName belongs to cRec.MenuGroup; persist only at final write
-            }
-                
-        if intVarField in _internalVarFields:
-            _internalVarFields[intVarField]()
-        # else:
-        #     no need to raise error
-        #     raise ValueError(f"Unknown internal variable field: {intVarField}")
-        # endif
-    # changeInternalVarField
 
 # class cWidgetMenuItem
