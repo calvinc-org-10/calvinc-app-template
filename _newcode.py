@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 from sqlalchemy import (select, ) 
 from sqlalchemy.orm import make_transient
 
-from cMenu.database import cMenu_Session
+from cMenu.database import cMenu_Session, get_cMenu_session, get_cMenu_sessionmaker, Repository
 from cMenu.dbmenulist import MenuRecords
 from cMenu.models import (menuGroups, menuItems, 
     newgroupnewmenu_menulist, )
@@ -278,32 +278,18 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         ########    menu and Group dicts
 
         def dictmenuGroup(self) -> Dict[str, int]:
-            # # TODO: generalize this to work with any table (return a dict of {id:record})
-            # listmenuGroups = recordsetList(menuGroups, retFlds=['GroupName', 'id'], ssnmaker=cMenu_Session, orderby='GroupName')
-            # # stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
-            # # with cMenu_Session() as session:
-            # #     retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
-            # retDict = {row['GroupName']: row['id'] for row in listmenuGroups}
-            # return retDict
             return MenuRecords.menuGroupDict()
         # dictmenuGroup
             
         def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
             retDict = Nochoice | MenuRecords.menuListDict(mnuGrp)
-            return retDict      # type: ignore
+            return retDict
         # dictmenus
         
         def dictmenuOptions(self, mnuID:int) -> Mapping[str, int|None]:
             mnuGrp:int = self.combobxMenuGroupID.currentData()
             listmenuItems = recordsetList(menuItems, retFlds=['OptionNumber'], where=f'MenuID={mnuID} AND MenuGroup_id={mnuGrp}', ssnmaker=cMenu_Session)
-            # stmt = select(menuItems.OptionNumber).select_from(menuItems).where(
-            #     menuItems.MenuID == mnuID,
-            #     menuItems.MenuGroup_id == mnuGrp,
-            # )
-            # with cMenu_Session() as session:
-            #     rs = session.execute(stmt).all()
-            #     definedOptions = [rec.OptionNumber for rec in rs]
-            definedOptions = [rec['OptionNumber'] for rec in listmenuItems]
+            definedOptions = {rec['OptionNumber'] for rec in listmenuItems}
             # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
             return Nochoice | { str(n+1): n+1 for n in range(_NUM_menuBUTTONS) if n+1 not in definedOptions }
             # MenuRecords.menuDict(mnuGrp, mnuID)
@@ -447,24 +433,6 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         return
     # _addActionButtons, _handleActionButton    
 
-    # not needed 0 super() already does this
-    # def _finalizeMainLayout(self):
-    #     assert isinstance(self.layoutMain, QBoxLayout), 'layoutMain must be a Box Layout'
-
-    #     # lyout = getattr(self, 'layoutFormHdr', None)
-    #     # if isinstance(lyout, QLayout):
-    #     #     self.layoutMain.addLayout(lyout)
-    #     lyout = getattr(self, 'layoutForm', None)
-    #     if isinstance(lyout, QWidget):
-    #         self.layoutMain.addWidget(lyout)
-    #     lyout = getattr(self, 'layoutButtons', None)
-    #     if isinstance(lyout, QLayout):
-    #         self.layoutMain.addLayout(lyout)
-    #     # lyout = getattr(self, '_statusBar', None)
-    #     # if isinstance(lyout, QLayout):
-    #     #     self.layoutMain.addLayout(lyout)            #TODO: more flexibility in where status bar is placed
-    # # _finalizeMainLayout
-
 
     ######################################################
     ########    Display 
@@ -479,8 +447,6 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     def initialdisplay(self):
         self.fillFormFromcurrRec()
     # initialdisplay()
-
-
 
     ##########################################
     ########    Create
@@ -532,11 +498,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         assert ssnmkr is not None, "Sessionmaker must be set before touching the database"
         modl = self.ORMmodel()
         assert modl is not None, "ORMmodel must be set before deleting record"
-        with ssnmkr() as session:
-            rec = session.get(modl, keyID)
-            if rec:
-                session.delete(rec)
-                session.commit()
+        Repository(ssnmkr, modl).remove(currRec)
 
         self.initializeRec()
         # preserve MenuGroup, MenuID, OptionNumber
@@ -557,6 +519,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
 
     def copyMenuOption(self):
         cRec = self.currRec()
+        tbl = cRec.__table__
         mnuGrp, mnuID, optNum = (cRec.MenuGroup_id, cRec.MenuID, cRec.OptionNumber)
 
         dlg = self.cEdtMnuItmDlg_CopyMove_MenuItm(mnuGrp, mnuID, optNum, self)
@@ -574,20 +537,15 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
             new_rec.MenuID = newMnuID[1]            # type: ignore
             new_rec.OptionNumber = newMnuID[2]      # type: ignore
 
-            with cMenu_Session() as session:
-                session.add(new_rec)
-                session.commit()
+            ssnmaker = self.ssnmaker()
+            assert ssnmaker is not None, "Sessionmaker must be set before touching the database"
+            
+            Repository(ssnmaker, tbl).add(new_rec)
 
             if CMChoiceCopy:
                 ... # we've done everything we need to do
             else:
-                pk = cRec.id
-                rslt = "No record to delete"
-                if pk:
-                    with cMenu_Session() as session:
-                        session.delete(cRec)
-                        session.commit()
-                #endif pk
+                Repository(ssnmaker, tbl).remove(cRec)
 
                 self.initializeRec()
                 # preserve MenuGroup, MenuID, OptionNumber
