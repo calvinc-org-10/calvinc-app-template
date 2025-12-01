@@ -26,11 +26,20 @@ from sqlalchemy.orm.session import make_transient
 # there's no need to import cMenu, plus it's a circular ref - cMenu depends heavily on this module
 # from .kls_cMenu import cMenu 
 
-from cMenu.utils import areYouSure, cComboBoxFromDict, cSimpleRecordForm_Base, cstdTabWidget
+from cMenu.utils import (
+    recordsetList,
+    cSimpleRecordForm_Base, cSimpleRecordForm, cQFmConstants,
+    cComboBoxFromDict, 
+    cstdTabWidget, cGridWidget,
+    areYouSure, 
+    )
 from menuformname_viewMap import FormNameToURL_Map
 from externalWebPageURL_Map import ExternalWebPageURL_Map
 
-from .database import (get_cMenu_sessionmaker, get_cMenu_session, )
+from .database import (
+    get_cMenu_sessionmaker, get_cMenu_session, 
+    Repository,
+    )
 from .dbmenulist import (MenuRecords, newgroupnewmenu_menulist, newmenu_menulist, )
 from sysver import sysver
 from .menucommand_constants import MENUCOMMANDS, COMMANDNUMBER
@@ -535,6 +544,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     requestMenuReload:Signal = Signal()
 
     class cEdtMnuItmDlg_CopyMove_MenuItm(QDialog):
+
         intCMChoiceCopy:int = 10
         intCMChoiceMove:int = 20
 
@@ -606,64 +616,10 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
             layoutMine.addWidget(self.dlgButtons)
 
             self.setLayout(layoutMine)
-
-        def dictmenuGroup(self) -> Dict[str, int]:
-            # TODO: generalize this to work with any table (return a dict of {id:record})
-            stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
-            with get_cMenu_session() as session:
-                retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
-            return retDict
-        def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
-            stmt = select(menuItems.OptionText, menuItems.MenuID).select_from(menuItems).where(
-                menuItems.MenuGroup_id == mnuGrp,
-                menuItems.OptionNumber == 0,  # only return the main menu items
-            ).order_by(menuItems.OptionText)
-            with get_cMenu_session() as session:
-                rs = session.execute(stmt).all()
-                # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
-                retDict = Nochoice | {row.OptionText: row.MenuID for row in rs}
-            return retDict      # type: ignore
-        def dictmenuOptions(self, mnuID:int) -> Mapping[str, int|None]:
-            mnuGrp:int = self.combobxMenuGroupID.currentData()
-            stmt = select(menuItems.OptionNumber).select_from(menuItems).where(
-                menuItems.MenuID == mnuID,
-                menuItems.MenuGroup_id == mnuGrp,
-            )
-            with get_cMenu_session() as session:
-                rs = session.execute(stmt).all()
-                definedOptions = [rec.OptionNumber for rec in rs]
-            # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
-            return Nochoice | { str(n+1): n+1 for n in range(_NUM_menuBUTTONS) if n+1 not in definedOptions }
-
-        @Slot(int)  #type: ignore
-        def loadMenuIDs(self, idx:int):
-            mnuGrp:int = self.combobxMenuGroupID.currentData()
-            # if self.combobxMenuGroupID.currentIndex() != -1:
-            if mnuGrp is not None:
-                self.combobxMenuID.replaceDict(dict(self.dictmenus(mnuGrp)))
-            self.combobxMenuID.setCurrentIndex(-1)
-            self.combobxMenuOption.clear()
-            self.enableOKButton()
-        @Slot(int) #type: ignore
-        def loadMenuOptions(self, idx:int):
-            mnuID:int = self.combobxMenuID.currentData()
-            #if self.combobxMenuID.currentIndex() != -1:
-            if mnuID is not None:
-                self.combobxMenuOption.replaceDict(dict(self.dictmenuOptions(mnuID)))
-            self.combobxMenuOption.setCurrentIndex(-1)
-            self.enableOKButton()
-        @Slot(int)  #type: ignore
-        def menuOptionChosen(self, idx:int):
-            self.enableOKButton()
-        def enableOKButton(self):
-            if not self.dlgButtons:
-                return
-            all_GrpIdOption_chosen = all([
-                self.combobxMenuGroupID.currentIndex() != -1,
-                self.combobxMenuID.currentIndex() != -1,
-                self.combobxMenuOption.currentIndex() != -1,
-            ])
-            self.dlgButtons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(all_GrpIdOption_chosen)
+        # __init__
+        
+        ##########################################
+        ########    execute this dialog
 
         def exec_CM_MItm(self) -> Tuple[int|bool, bool, Tuple[int, int, int]]:
             ret = super().exec()
@@ -677,6 +633,85 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
                 # return (Group, Menu, OptrNum) tuple
                 (chosenMenuGroup, chosenMenuID, chosenMenuOption),
                 )
+        # exec_CM_MItm
+
+        ##########################################
+        ########    menu and Group dicts
+
+        def dictmenuGroup(self) -> Dict[str, int]:
+            return MenuRecords.menuGroupsDict()
+        # dictmenuGroup
+            
+        def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
+            retDict = Nochoice | MenuRecords.menuListDict(mnuGrp)
+            return retDict
+        # dictmenus
+        
+        def dictmenuOptions(self, mnuID:int) -> Mapping[str, int|None]:
+            mnuGrp:int = self.combobxMenuGroupID.currentData()
+            listmenuItems = recordsetList(menuItems, retFlds=['OptionNumber'], where=f'MenuID={mnuID} AND MenuGroup_id={mnuGrp}', ssnmaker=get_cMenu_sessionmaker())
+            definedOptions = {rec['OptionNumber'] for rec in listmenuItems}
+            # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
+            return Nochoice | { str(n+1): n+1 for n in range(_NUM_menuBUTTONS) if n+1 not in definedOptions }
+            # MenuRecords.menuDict(mnuGrp, mnuID)
+        # dictmenuOptions
+
+        ##########################################
+        ########    getters/setters
+
+        ##########################################
+        ########    Create
+
+        ##########################################
+        ########    Read
+
+        @Slot(int)  #type: ignore
+        def loadMenuIDs(self, idx:int):
+            mnuGrp:int = self.combobxMenuGroupID.currentData()
+            # if self.combobxMenuGroupID.currentIndex() != -1:
+            if mnuGrp is not None:
+                self.combobxMenuID.replaceDict(dict(self.dictmenus(mnuGrp)))
+            self.combobxMenuID.setCurrentIndex(-1)
+            self.combobxMenuOption.clear()
+            self.enableOKButton()
+        # loadMenuIDs
+        
+        @Slot(int) #type: ignore
+        def loadMenuOptions(self, idx:int):
+            mnuID:int = self.combobxMenuID.currentData()
+            #if self.combobxMenuID.currentIndex() != -1:
+            if mnuID is not None:
+                self.combobxMenuOption.replaceDict(dict(self.dictmenuOptions(mnuID)))
+            self.combobxMenuOption.setCurrentIndex(-1)
+            self.enableOKButton()
+        # loadMenuOptions
+        
+        ##########################################
+        ########    Update
+
+        ##########################################
+        ########    Delete
+
+        ##########################################
+        ########    object status
+
+        ##########################################
+        ########    widget-responding procs
+
+        @Slot(int)  #type: ignore
+        def menuOptionChosen(self, idx:int):
+            self.enableOKButton()
+        # menuOptionChosen
+        def enableOKButton(self):
+            if not self.dlgButtons:
+                return
+            all_GrpIdOption_chosen = all([
+                self.combobxMenuGroupID.currentIndex() != -1,
+                self.combobxMenuID.currentIndex() != -1,
+                self.combobxMenuOption.currentIndex() != -1,
+            ])
+            self.dlgButtons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(all_GrpIdOption_chosen)
+        # enableOKButton
 
 
     def __init__(self, menuitmRec:menuItems, parent:QWidget = None):   # type: ignore
@@ -759,24 +794,6 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         return
     # _addActionButtons, _handleActionButton    
 
-    # not needed 0 super() already does this
-    # def _finalizeMainLayout(self):
-    #     assert isinstance(self.layoutMain, QBoxLayout), 'layoutMain must be a Box Layout'
-
-    #     # lyout = getattr(self, 'layoutFormHdr', None)
-    #     # if isinstance(lyout, QLayout):
-    #     #     self.layoutMain.addLayout(lyout)
-    #     lyout = getattr(self, 'layoutForm', None)
-    #     if isinstance(lyout, QWidget):
-    #         self.layoutMain.addWidget(lyout)
-    #     lyout = getattr(self, 'layoutButtons', None)
-    #     if isinstance(lyout, QLayout):
-    #         self.layoutMain.addLayout(lyout)
-    #     # lyout = getattr(self, '_statusBar', None)
-    #     # if isinstance(lyout, QLayout):
-    #     #     self.layoutMain.addLayout(lyout)            #TODO: more flexibility in where status bar is placed
-    # # _finalizeMainLayout
-
 
     ######################################################
     ########    Display 
@@ -791,8 +808,6 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     def initialdisplay(self):
         self.fillFormFromcurrRec()
     # initialdisplay()
-
-
 
     ##########################################
     ########    Create
@@ -844,11 +859,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         assert ssnmkr is not None, "Sessionmaker must be set before touching the database"
         modl = self.ORMmodel()
         assert modl is not None, "ORMmodel must be set before deleting record"
-        with ssnmkr() as session:
-            rec = session.get(modl, keyID)
-            if rec:
-                session.delete(rec)
-                session.commit()
+        Repository(ssnmkr, modl).remove(currRec)
 
         self.initializeRec()
         # preserve MenuGroup, MenuID, OptionNumber
@@ -863,12 +874,13 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     # ##########################################
     # ########    Record Status
 
-    
+
     ##########################################
     ########    Widget-responding procs
 
     def copyMenuOption(self):
         cRec = self.currRec()
+        tbl = cRec.__table__
         mnuGrp, mnuID, optNum = (cRec.MenuGroup_id, cRec.MenuID, cRec.OptionNumber)
 
         dlg = self.cEdtMnuItmDlg_CopyMove_MenuItm(mnuGrp, mnuID, optNum, self)
@@ -886,48 +898,78 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
             new_rec.MenuID = newMnuID[1]            # type: ignore
             new_rec.OptionNumber = newMnuID[2]      # type: ignore
 
-            with get_cMenu_session() as session:
-                session.add(new_rec)
-                session.commit()
+            ssnmaker = self.ssnmaker()
+            assert ssnmaker is not None, "Sessionmaker must be set before touching the database"
+            
+            Repository(ssnmaker, tbl).add(new_rec)
 
             if CMChoiceCopy:
                 ... # we've done everything we need to do
             else:
-                pk = cRec.id
-                rslt = "No record to delete"
-                if pk:
-                    with get_cMenu_session() as session:
-                        session.delete(cRec)
-                        session.commit()
-                #endif pk
+                Repository(ssnmaker, tbl).remove(cRec)
 
                 self.initializeRec()
                 # preserve MenuGroup, MenuID, OptionNumber
                 currRec = self.currRec()
                 currRec.MenuGroup_id, currRec.MenuID, currRec.OptionNumber = mnuGrp, mnuID, optNum
-
-                self.fillFormFromcurrRec()
-
-                self.requestMenuReload.emit()   # let listeners know we need a menu reload
             #endif CMChoiceCopy
+
+            self.fillFormFromcurrRec()
+
+            self.requestMenuReload.emit()   # let listeners know we need a menu reload
+            
+            # announce success
+            copyword = 'copied' if CMChoiceCopy else 'moved'
+            QMessageBox.information(self,
+                self.tr(f"Menu Option {copyword}"),
+                self.tr(f"Menu option {mnuGrp}, {mnuID}, {optNum} successfully {copyword} to {newMnuID[0]}, {newMnuID[1]}, {newMnuID[2]}.")
+                )
+
         # #endif retval
         return
     # copyMenuOption
     
 # class cWidgetMenuItem
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-class cEditMenu(QWidget):
+
+class cEditMenu(cSimpleRecordForm):
+    _ORMmodel = menuItems
+    _ssnmaker = get_cMenu_sessionmaker()
+    _formname = 'Edit Menu'
+    fieldDefs = {
+        '@MenuGroup_id': {'widgetType': cComboBoxFromDict, 'label': 'Menu Group', 'lookupHandler': 'loadMenuWithGroupID', 
+            # 'choices': lambda: self.dictmenuGroup(), 
+            'page': cQFmConstants.pageFixedTop.value, 'position': (0,0), },
+        '@MenuID': {'widgetType': cComboBoxFromDict, 'label': 'Menu ID',  'lookupHandler': 'loadMenuWithMenuID', 
+            # 'choices': lambda self: self.dictmenus(self.intmenuGroup), 
+            'page': cQFmConstants.pageFixedTop.value, 'position': (1,0), },
+        '+GroupName': {'widgetType': QLineEdit, 'label': 'Menu Group Name', 
+            'page': cQFmConstants.pageFixedTop.value, 'position': (0,2,1,2), },
+        'OptionText': {'widgetType': QLineEdit, 'label': 'Menu Name', 
+            'page': cQFmConstants.pageFixedTop.value, 'position': (1,2), },
+        '+RmvMenu': {'widgetType': QPushButton, 'label': 'Remove Menu', 'clickedHandler': 'rmvMenu', 
+            'page': cQFmConstants.pageFixedTop.value, 'position': (1,3), },
+        '+NewMenuGroup': {'widgetType': QPushButton, 'label': 'New Menu Group', 'clickedHandler': 'createNewMenuGroup', 
+            'page': cQFmConstants.pageFixedTop.value, 'position': (0,4), },
+        '+CopyMenu': {'widgetType': QPushButton, 'label': 'Copy/Move Menu', 'clickedHandler': 'copyMenu', 
+            'page': cQFmConstants.pageFixedTop.value, 'position': (1,4), },
+        '+Commit': {'widgetType': QPushButton, 'label': '\nSave\nChanges\n', 'clickedHandler': 'writeRecord', 
+            'page': cQFmConstants.pageFixedTop.value, 'position': (0,5,2,1), },
+    }
+
     # more class constants
     _DFLT_menuGroup: int = -1
     _DFLT_menuID: int = -1
     intmenuGroup:int = _DFLT_menuGroup
     intmenuID:int = _DFLT_menuID
-    formFields:Dict[str, QWidget] = {}
     
-
     class wdgtmenuITEM(cWidgetMenuItem):
         def __init__(self, menuitmRec, parent = None):
             super().__init__(menuitmRec, parent)
+    # wdgtmenuITEM
             
     class cEdtMnuDlgGetNewMenuGroupInfo(QDialog):
         def __init__(self, parent:QWidget|None = None):
@@ -970,6 +1012,7 @@ class cEditMenu(QWidget):
                 self.lnedtGroupName.text()         if ret==self.DialogCode.Accepted else None,
                 self.txtedtGroupInfo.toPlainText() if ret==self.DialogCode.Accepted else None,
                 )
+    # cEdtMnuDlgGetNewMenuGroupInfo
     
     class cEdtMnuDlgCopyMoveMenu(QDialog):
         intCMChoiceCopy:int = 10
@@ -986,10 +1029,9 @@ class cEditMenu(QWidget):
             layoutMenuID = QHBoxLayout()
             lblMenuID = QLabel(self.tr('Menu ID'))
             self.combobxMenuID = QComboBox(self)
-            #  definedMenus = menuItems.objects.filter(MenuGroup=mnuGrp, OptionNumber=0).values_list('MenuID', flat=True)
             
-            dictDefinedMenus = MenuRecords().recordsetList(['MenuID'], filter=f'MenuGroup_id={mnuGrp} AND OptionNumber=0')   # .objects.filter(MenuGroup=mnuGrp, OptionNumber=0).values_list('MenuID', flat=True)
-            definedMenus = [mDict['MenuID'] for mDict in dictDefinedMenus]
+            dictDefinedMenus = MenuRecords().recordsetList(['MenuID'], filter=f'MenuGroup_id={mnuGrp} AND OptionNumber=0')
+            definedMenus = {mDict['MenuID'] for mDict in dictDefinedMenus}
             self.combobxMenuID.addItems([str(n) for n in range(256) if n not in definedMenus])
             layoutMenuID.addWidget(lblMenuID)
             layoutMenuID.addWidget(self.combobxMenuID)
@@ -1035,122 +1077,157 @@ class cEditMenu(QWidget):
     # cEdtMnuDlgCopyMoveMenu
 
     def __init__(self, parent:QWidget|None = None, MainMenuWindow:QWidget|None = None):
-        super().__init__(parent)
 
         self.MainMenuWindow = MainMenuWindow
         
-        self.layoutMain: QBoxLayout = QVBoxLayout(self)
-        # self.layoutMain.setContentsMargins(5,5,5,5)        
-        self.layoutmainMenu: QGridLayout = QGridLayout()
-        self.WmenuItm: Dict[int, cEditMenu.wdgtmenuITEM] = {}
-        self.layoutmenuHdr: QHBoxLayout = QHBoxLayout()
-        self.layoutmenuHdrLeft: QVBoxLayout = QVBoxLayout()
-        self.layoutmenuHdrRight: QVBoxLayout = QVBoxLayout()
+        # variables unique to this class
         self._menuSOURCE = MenuRecords()
-        # self.currentMenu:cQSqlTableModel = None
-        self.currentMenu:Dict[int, menuItems] = {}
-        self.currRec:menuItems|None = None
+        self.currentMenu: Dict[int, menuItems] = {}
+        self.WmenuItm: Any = [None for bNum in range(_NUM_menuBUTTONS)]    # later - build WmenuItm before this loop?
+
+        super().__init__(parent=parent)
+        self.layoutForm = self.dictFormLayouts.get('layoutForm')
+        assert isinstance(self.layoutForm, cGridWidget), "layoutForm is not a cGridWidget"
         
-        self.layoutmainMenu.setColumnStretch(0,1)
-        self.layoutmainMenu.setColumnStretch(1,0)
-        self.layoutmainMenu.setColumnStretch(2,1)
+        # self.fldmenuGroup = self.fieldDefs['@MenuGroup_id'].get('widget') 
+        self.fldmenuGroup = self._lookupFrmElements['@MenuGroup_id']
+        self.fldmenuGroup.replaceDict(self.dictmenuGroups())    # type: ignore
+        self.fldmenuGroupName = self._formWidgets.get('+GroupName') 
         
-        self.layoutMenuHdrLn1 = QHBoxLayout()
-        self.layoutMenuHdrLn2 = QHBoxLayout()
+        self.loadMenu()
+    # __init__
 
-        modlFld='MenuGroup'
-        wdgt:cQFmFldWidg = cQFmFldWidg(cComboBoxFromDict, lblText='Menu Group', modlFld=modlFld, 
-            choices=self.dictmenuGroup(), parent= self)
-        self.formFields[modlFld] = wdgt
-        self.fldmenuGroup:cQFmFldWidg = wdgt
-        wdgt.signalFldChanged.connect(lambda idx: self.loadMenu(menuGroup=self.fldmenuGroup.Value()))  # type: ignore
+    ##########################################
+    ########    getters/setters
 
-        modlFld='GroupName'
-        wdgt:cQFmFldWidg = cQFmFldWidg(QLineEdit, lblText='Group Name', modlFld=modlFld, parent=self)
-        self.formFields[modlFld] = wdgt
-        self.fldmenuGroupName:cQFmFldWidg = wdgt
-        wdgt.signalFldChanged.connect(lambda: self.changeField(self.fldmenuGroupName))
+    def menuSOURCE(self) -> Any:
+        return self._menuSOURCE
 
-        self.btnNewMenuGroup:QPushButton = QPushButton(self.tr('New Menu\nGroup'), self)
-        self.btnNewMenuGroup.clicked.connect(self.createNewMenuGroup)
+    ##########################################
+    ########    Layout
 
-        modlFld='MenuID'
-        wdgt:cQFmFldWidg = cQFmFldWidg(cComboBoxFromDict, lblText='menu', modlFld=modlFld, 
-            parent=self)
-        self.formFields[modlFld] = wdgt
-        self.fldmenuID:cQFmFldWidg = wdgt
-        wdgt.signalFldChanged.connect(lambda idx: self.loadMenu(menuGroup=self.intmenuGroup, menuID=self.fldmenuID.Value())) # type: ignore
-
-        modlFld='OptionText'
-        wdgt:cQFmFldWidg = cQFmFldWidg(QLineEdit, lblText='Menu Name', modlFld='OptionText', parent=self)
-        self.formFields[modlFld] = wdgt
-        self.fldmenuName:cQFmFldWidg = wdgt
-        self.fldmenuName.signalFldChanged.connect(lambda: self.changeField(self.fldmenuName))
-        
+    def _addActionButtons(self, layoutButtons: QBoxLayout | None = None, layoutHorizontal: bool = True, NavActions: List[Tuple[str, QIcon]] | None = None, CRUDActions: List[Tuple[str, QIcon]] | None = None) -> None:
+        # there is no button line on this form
+        self.btnCommit = self.fieldDefs['+Commit'].get('widget')
+        return
+    # _addActionButtons
+    
+    def _finalizeMainLayout(self, layoutMain: QVBoxLayout, items: List | tuple) -> None:
         self.lblnummenuGroupID:  QLCDNumber = QLCDNumber(3)
         self.lblnummenuGroupID.setMaximumSize(20,20)
         self.lblnummenuID:  QLCDNumber = QLCDNumber(3)
         self.lblnummenuID.setMaximumSize(20,20)
+        layout = self.FormPage(cQFmConstants.pageFixedTop.value)
+        assert layout is not None, "Layout is None"
+        layout.addWidget(self.lblnummenuGroupID, 0,1)
+        layout.addWidget(self.lblnummenuID, 1,1)
 
-        self.btnRmvMenu:QPushButton = QPushButton(self.tr('Remove Menu'), self)
-        self.btnRmvMenu.clicked.connect(self.rmvMenu)
-        self.btnCopyMenu:QPushButton = QPushButton(self.tr('Copy/Move\nMenu'), self)
-        self.btnCopyMenu.clicked.connect(self.copyMenu)
+        layoutmainMenu = self.FormPage(0)  # main page
+        assert isinstance(layoutmainMenu, QGridLayout), "layoutmainMenu is not a QGridLayout"
+        layoutmainMenu.setColumnStretch(0,1)
+        layoutmainMenu.setColumnStretch(1,0)
+        layoutmainMenu.setColumnStretch(2,1)
+        self.layoutmainMenu = layoutmainMenu
         
-        self.layoutMenuHdrLn1.addWidget(self.fldmenuGroup)
-        self.layoutMenuHdrLn1.addWidget(self.lblnummenuGroupID)
-        self.layoutMenuHdrLn1.addWidget(self.fldmenuGroupName)
-        self.layoutMenuHdrLn1.addWidget(self.btnNewMenuGroup)
-        
-        self.layoutMenuHdrLn2.addWidget(self.fldmenuID)
-        self.layoutMenuHdrLn2.addWidget(self.lblnummenuID)
-        self.layoutMenuHdrLn2.addWidget(self.fldmenuName)
-        self.layoutMenuHdrLn2.addWidget(self.btnRmvMenu)
-        self.layoutMenuHdrLn2.addWidget(self.btnCopyMenu)
-        
-        self.btnCommit:QPushButton = QPushButton(self.tr('\nSave\nChanges\n'), self)
-        self.btnCommit.clicked.connect(self.writeRecord)
-
-        self.layoutmenuHdrLeft.addLayout(self.layoutMenuHdrLn1)
-        self.layoutmenuHdrLeft.addLayout(self.layoutMenuHdrLn2)
-        self.layoutmenuHdrRight.addWidget(self.btnCommit)
-        self.layoutmenuHdrRight.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        self.layoutmenuHdr.addLayout(self.layoutmenuHdrLeft)
-        self.layoutmenuHdr.addLayout(self.layoutmenuHdrRight)
-        
-        self.layoutMain.addLayout(self.layoutmenuHdr)
-    ####
-        self.bxFrame:List[QFrame] = [QFrame() for _ in range(_NUM_menuBUTTONS)]
+        bxFrame:List[QFrame] = [QFrame() for _ in range(_NUM_menuBUTTONS)]
         for bNum in range(_NUM_menuBUTTONS):
-            self.bxFrame[bNum].setLineWidth(1)
-            self.bxFrame[bNum].setFrameStyle(QFrame.Shape.Box|QFrame.Shadow.Plain)
-            y, x = ((bNum % _NUM_menuBTNperCOL), 0 if bNum < _NUM_menuBTNperCOL else 2)
-            self.layoutmainMenu.addWidget(self.bxFrame[bNum],y,x)
+            bxFrame[bNum].setLineWidth(1)
+            bxFrame[bNum].setFrameStyle(QFrame.Shape.Box|QFrame.Shadow.Plain)
+            y, x = ((bNum % _NUM_menuBTNperCOL)+1, 0 if bNum < _NUM_menuBTNperCOL else 2)
+            self.layoutmainMenu.addWidget(bxFrame[bNum],y,x)
             
             self.WmenuItm[bNum] = None      # type: ignore  # later - build WmenuItm before this loop?
 
-        layoutManinMenu_wrapperWidget = QWidget()
-        layoutManinMenu_wrapperWidget.setLayout(self.layoutmainMenu)
-        self.layoutManinMenu_scrollerWidget = QScrollArea()
-        self.layoutManinMenu_scrollerWidget.setWidget(layoutManinMenu_wrapperWidget)
-        self.layoutManinMenu_scrollerWidget.setWidgetResizable(True)
-        self.layoutMain.addWidget(self.layoutManinMenu_scrollerWidget)
+        # self.setMinimumWidth(layoutMain.maximumSize().width()+100)
         
-        self.setWindowTitle(self.tr('Edit Menu'))
-                    
-        # self.setLayout(self.layoutmainMenu)
-        self.loadMenu()
-    # __init__
+        return super()._finalizeMainLayout(layoutMain, items)
+    
+    ##########################################
+    ########    menu and Group dicts
 
-    def dictmenuGroup(self) -> Dict[str, int]:
-        rs = MenuRecords().recordsetList(['id', 'GroupName'])
-        retDict = {d['GroupName']:d['id'] for d in rs}
+    def dictmenuGroups(self) -> Dict[str, int]:
+        # rs = self.menuSOURCE().recordsetList(['MenuGroup_id', 'GroupName'])
+        rs = MenuRecords.menuGroupsDict()
+        # retDict = {d['GroupName']:d['MenuGroup_id'] for d in rs}
+        retDict = rs
         return retDict
     def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
-        tbl = MenuRecords()
+        tbl = self.menuSOURCE()
         rs = tbl.recordsetList(['MenuID', 'OptionText'], f'MenuGroup_id = {mnuGrp} AND OptionNumber = 0')
         retDict = Nochoice | {f"{d['OptionText']} ({d['MenuID']})":d['MenuID'] for d in rs}
         return retDict
+
+    ##########################################
+    ########    Display 
+
+    def displayMenu(self):
+        from cMenu.cMenu import cMenu as cMenuClass
+
+        menuGroup = self.intmenuGroup
+        menuID = self.intmenuID
+        menuItemRecs = self.currentMenu
+        # menuItemRecs.setFilter('OptionNumber=0')
+        # menuHdrRec:QSqlRecord = self.movetoutil_findrecwithvalue(menuItemRecs,'OptionNumber',0)
+        menuHdrRec:menuItems = menuItemRecs[0]
+        
+        # set header elements
+        self.lblnummenuGroupID.display(menuGroup)
+        self.fldmenuGroup.setValue(str(menuGroup)) # type: ignore
+
+        r = Repository(get_cMenu_sessionmaker(), menuGroups).get_by_id(menuGroup)
+        # stmt = select(menuGroups.GroupName).where(menuGroups.id == menuGroup)
+        # with cMenu_Session() as session:
+        #     result = session.execute(stmt)
+        #     group_name = result.scalar_one_or_none()
+        # GpName = group_name if group_name else ""
+        GpName = r.GroupName # type: ignore
+
+        self.fldmenuGroupName.setValue(GpName) # type: ignore
+        self.lblnummenuID.display(menuID)
+        fldmenuID = self.fieldDefs['@MenuID'].get('widget')        
+        fldmenuID.replaceDict(self.dictmenus(menuGroup))  # type: ignore
+        fldmenuID.setValue(menuID) # type: ignore
+        fldmenuName = self.fieldDefs['OptionText'].get('widget')  # self.fldmenuID.replaceDict(dict(d))
+        fldmenuName.setValue(menuHdrRec.OptionText) # type: ignore
+
+        for bNum in range(_NUM_menuBUTTONS):
+            y, x = ((bNum % _NUM_menuBTNperCOL)+1, 0 if bNum < _NUM_menuBTNperCOL else 2)
+            bIndx = bNum+1
+            # mnuItmRc = self.movetoutil_findrecwithvalue(menuItemRecs, 'OptionNumber', bIndx)  # this is safer, but the line below is faster and is same in this case
+            mnuItmRc = menuItemRecs.get(bIndx)
+            if not mnuItmRc:
+                mnuItmRc = menuItems(
+                    MenuGroup_id=menuGroup,
+                    MenuID=menuID,
+                    OptionNumber=bIndx,
+                    OptionText = '',
+                    Argument = '',
+                    PWord = ''
+                )
+            oldWdg = self.WmenuItm[bNum]
+            if oldWdg:
+                # remove old widget
+                self.layoutmainMenu.removeWidget(oldWdg)
+                oldWdg.hide()
+                del oldWdg
+
+            self.WmenuItm[bNum] = self.wdgtmenuITEM(mnuItmRc)
+            self.WmenuItm[bNum].requestMenuReload.connect(lambda: self.loadMenu(self.intmenuGroup, self.intmenuID))
+            if isinstance(self.MainMenuWindow, cMenuClass):
+                self.WmenuItm[bNum].requestMenuReload.connect(self.MainMenuWindow.refreshMenu)
+            self.layoutmainMenu.addWidget(self.WmenuItm[bNum],y,x) 
+        # endfor
+
+        mItmH = self.WmenuItm[0].height()
+        mItmW = self.WmenuItm[0].width()
+        padW = 70
+        multH = 1.5
+        # TODO: adjust scroller size based on number of items (do the line below)
+        # self.layoutManinMenu_scrollerWidget.setMinimumSize(mItmW*2+10, mItmH)
+        assert isinstance(self.layoutForm, cGridWidget), "layoutForm is not a cGridWidget"
+        self.layoutForm._scroller.setMinimumSize(mItmW*2+padW, multH*mItmH)     # type: ignore
+        
+    # displayMenu
 
     ##########################################
     ########    Create
@@ -1165,33 +1242,37 @@ class cEditMenu(QWidget):
                 GroupName=grpName,
                 GroupInfo=grpInfo,
             )
-            with get_cMenu_session() as session:
-                session.add(newrec)
-                session.commit()
-                # get the primary key of the new record
-                grppk = newrec.id            
+            newrec = Repository(get_cMenu_sessionmaker(), menuGroups).add(newrec)
+            grppk = newrec.id            
+            # with cMenu_Session() as session:
+            #     session.add(newrec)
+            #     session.commit()
+            #     # get the primary key of the new record
+            #     grppk = newrec.id            
 
             # create a default menu
             # newgroupnewmenu_menulist to menuItems
             for rec in newgroupnewmenu_menulist:
                 # rec is a dict with keys: OptionNumber, OptionText, Command, Argument, PWord, TopLine, BottomLine
                 # create a new record in menuItems
+                # TODO: check for existing menu items with same MenuGroup_id and MenuID and OptionNumber?
+                # TODO: make sure rec has all required keys
                 newmenurec = menuItems(
                     MenuGroup_id=grppk,
                     MenuID=0,  # default menu ID
                     OptionNumber=rec['OptionNumber'],
-                    OptionText=rec['OptionText'],
-                    Command=rec['Command'],
-                    Argument=rec['Argument'],
-                    PWord=rec['PWord'],
-                    TopLine=rec['TopLine'],
-                    BottomLine=rec['BottomLine'],
+                    OptionText=rec.get( 'OptionText', ''),
+                    Command=rec.get('Command'),
+                    Argument=rec.get('Argument' ''),
+                    PWord=rec.get('PWord', ''),
+                    TopLine=rec.get('TopLine'),
+                    BottomLine=rec.get('BottomLine'),
                 )
                 # save the new record
-                with get_cMenu_session() as session:
-                    session.add(newmenurec)
-                    session.commit()
-                # add the new record to the menuItems table
+                Repository(get_cMenu_sessionmaker(), menuItems).add(newmenurec)
+                # with cMenu_Session() as session:
+                #     session.add(newmenurec)
+                #     session.commit()
 
             self.loadMenu(grppk, 0)
         return
@@ -1233,89 +1314,31 @@ class cEditMenu(QWidget):
                 
                 self.loadMenu(mnuGrp, newMnuID)
                 
-            #endwith get_cMenu_session() as session:
+            #endwith cMenu_Session() as session:
         #endif retval
 
         return
-
+    # copyMenu
         
     ##########################################
     ########    Read
 
-    def movetoutil_findrecwithvalue(self, tblModel:Dict[int, menuItems], fld:str, trgtValue) -> menuItems | None:
-        # for n in range(tblModel.rowCount()):
-        for testrec in tblModel.values():
-            # testrec = tblModel.record(n)
-            if getattr(testrec, fld) == trgtValue:
-                return testrec
-            #endif testrec.value(fld) == trgtValue:
-        #endwhile not testrec.isEmpty():
-        
-        return None
-    # movetoutil_findrecwithvalue
-    
-    def displayMenu(self):
-        from cMenu.cMenu import cMenu as cMenuClass
-
-        menuGroup = self.intmenuGroup
-        menuID = self.intmenuID
-        menuItemRecs = self.currentMenu
-        # menuItemRecs.setFilter('OptionNumber=0')
-        # menuHdrRec:QSqlRecord = self.movetoutil_findrecwithvalue(menuItemRecs,'OptionNumber',0)
-        menuHdrRec:menuItems = menuItemRecs[0]
-        
-        # set header elements
-        self.lblnummenuGroupID.display(menuGroup)
-        self.fldmenuGroup.setValue(str(menuGroup)) # type: ignore
-
-        stmt = select(menuGroups.GroupName).where(menuGroups.id == menuGroup)
-        with get_cMenu_session() as session:
-            result = session.execute(stmt)
-            group_name = result.scalar_one_or_none()
-        GpName = group_name if group_name else ""
-
-        self.fldmenuGroupName.setValue(GpName) # type: ignore
-        self.lblnummenuID.display(menuID)
-        d = self.dictmenus(menuGroup)
-        self.fldmenuID.replaceDict(dict(d))
-        self.fldmenuID.setValue(menuID) # type: ignore
-        self.fldmenuName.setValue(menuHdrRec.OptionText) # type: ignore
-
-        for bNum in range(_NUM_menuBUTTONS):
-            y, x = ((bNum % _NUM_menuBTNperCOL)+1, 0 if bNum < _NUM_menuBTNperCOL else 2)
-            bIndx = bNum+1
-            # mnuItmRc = self.movetoutil_findrecwithvalue(menuItemRecs, 'OptionNumber', bIndx)  # this is safer, but the line below is faster and is same in this case
-            mnuItmRc = menuItemRecs.get(bIndx)
-            if not mnuItmRc:
-                mnuItmRc = menuItems(
-                    MenuGroup_id=menuGroup,
-                    MenuID=menuID,
-                    OptionNumber=bIndx,
-                    OptionText = '',
-                    Argument = '',
-                    PWord = ''
-                )
-            oldWdg = self.WmenuItm[bNum]
-            if oldWdg:
-                # remove old widget
-                self.layoutmainMenu.removeWidget(oldWdg)
-                oldWdg.hide()
-                del oldWdg
-
-            self.WmenuItm[bNum] = self.wdgtmenuITEM(mnuItmRc)
-            self.WmenuItm[bNum].requestMenuReload.connect(lambda: self.loadMenu(self.intmenuGroup, self.intmenuID))
-            if isinstance(self.MainMenuWindow, cMenuClass):
-                self.WmenuItm[bNum].requestMenuReload.connect(self.MainMenuWindow.refreshMenu)
-            self.layoutmainMenu.addWidget(self.WmenuItm[bNum],y,x) 
-        # endfor
-
-        mItmH = self.WmenuItm[0].height()
-        mItmW = self.WmenuItm[0].width()
-        self.layoutManinMenu_scrollerWidget.setMinimumSize(mItmW*2+10, mItmH)
-        
-     
-    # displayMenu
-
+    @Slot()
+    def loadMenuWithGroupID(self, menuGroup:int):
+        # menuGroup = self.fldmenuGroup.Value()  # type: ignore
+        menuID = self._DFLT_menuID
+        if menuGroup is None or menuID is None:
+            return
+        self.loadMenu(int(menuGroup), int(menuID))
+    # loadMenuWithGroupID
+    @Slot()
+    def loadMenuWithMenuID(self, menuID:int):
+        # menuID = self.fldmenuID.Value()        # type: ignore
+        if menuID is None:
+            return
+        self.loadMenu(self.intmenuGroup, int(menuID))
+    # loadMenuWithMenuID
+    @Slot(int, int)
     def loadMenu(self, menuGroup: int = _DFLT_menuGroup, menuID: int = _DFLT_menuID):
         SRC = self._menuSOURCE
         if menuGroup==self._DFLT_menuGroup:
@@ -1335,8 +1358,8 @@ class cEditMenu(QWidget):
         if SRC.menuExist(menuGroup, menuID):
             self.currentMenu = SRC.menuDBRecs(menuGroup, menuID)
             # self.currRec = self.movetoutil_findrecwithvalue(self.currentMenu, 'OptionNumber', 0)
-            self.currRec = self.currentMenu[0]  # am I safe in assuming existence?
-            self.setFormDirty(self, False)       # should this be in displayMenu ?
+            self.setcurrRec(self.currentMenu[0])  # am I safe in assuming existence?
+            self.setDirty(False)       # should this be in displayMenu ?
             self.displayMenu()
         else:
             # menu doesn't exist; say so
@@ -1348,36 +1371,22 @@ class cEditMenu(QWidget):
             msg.open()
     # loadMenu
 
-
     ##########################################
     ########    Update
 
     @Slot(Any)   #type: ignore
-    def changeField(self, wdgt:cQFmFldWidg) -> bool:
-        # move to class var?
-        forgnKeys = {   
-            'MenuGroup',
-            }
-        # move to class var?
-        valu_transform_flds = {
-            'GroupName',
-            }
-        cRec = self.currRec
-        dbField = wdgt.modelField()
+    # def changeField(self, wdgt:cQFmFldWidg) -> bool:
+    def changeField(self, wdgt, dbField, wdgt_value):
 
-        wdgt_value = wdgt.Value()
+        cRec = self.currRec()
 
-        if dbField in forgnKeys:
-            dbField += '_id'
-        if dbField in valu_transform_flds:
-            # wdgt_value = valu_transform_flds[dbField][1](wdgt_value)
-            pass
-
+        super().changeField(wdgt, dbField, wdgt_value)
+        
         if wdgt_value or isinstance(wdgt_value,bool):
-            if dbField != 'GroupName':  # GroupName belongs to cRec.MenuGroup; persist only at final write
+            if dbField != '+GroupName':  # GroupName belongs to cRec.MenuGroup; persist only at final write
                 assert cRec is not None, "Current record is None"
                 cRec.setValue(str(dbField), wdgt_value)
-            self.setFormDirty(wdgt, True)
+            wdgt.setDirty(True)
         
             return True
         else:
@@ -1385,37 +1394,75 @@ class cEditMenu(QWidget):
         # endif wdgt_value
     # changeField
     
+    # def changeInternalVarField(self, wdgt):
+    def changeInternalVarField(self, wdgt, intVarField, wdgt_value):
+        # '+RmvMenu': {'widgetType': QPushButton, 'label': 'Remove Menu', 'clickedHandler': 'rmvMenu', 
+        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,3), },
+        # '+NewMenuGroup': {'widgetType': QPushButton, 'label': 'New Menu Group', 'clickedHandler': 'createNewMenuGroup', 
+        #     'page': cQFmConstants.pageFixedTop.value, 'position': (0,4), },
+        # '+CopyMenu': {'widgetType': QPushButton, 'label': 'Copy/Move Menu', 'clickedHandler': 'copyMenu', 
+        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,4), },
+        # '+Commit': {'widgetType': QPushButton, 'label': 'Save Changes', 'clickedHandler': 'writeRecord', 
+        #     'page': cQFmConstants.pageFixedTop.value, 'position': (1,5,2,1), },
+        # assert isinstance(wdgt, cQFmFldWidg), "wdgt is not a cQFmFldWidg"
+        # intVarField = wdgt.modelField()
+        _internalVarFields = {
+            '+RmvMenu': self.rmvMenu, 
+            '+NewMenuGroup': self.createNewMenuGroup, 
+            '+CopyMenu': self.copyMenu, 
+            '+Commit': self.writeRecord,
+            '+GroupName': lambda: None,  # GroupName belongs to cRec.MenuGroup; persist only at final write
+            }
+                
+        if intVarField in _internalVarFields:
+            _internalVarFields[intVarField]()
+        # else:
+        #     no need to raise error
+        #     raise ValueError(f"Unknown internal variable field: {intVarField}")
+        # endif
+    # changeInternalVarField
+
     @Slot()
     def writeRecord(self):
-        if not self.isFormDirty():
+        if not self.isDirty():
             return
         
-        cRec = self.currRec
+        cRec = self.currRec()
         
         # check other traps later
         
-        if self.isWdgtDirty(self.fldmenuGroupName):
-            grpstmt = select(menuGroups).where(menuGroups.id == self.intmenuGroup)
-            with get_cMenu_session() as session:
-                groupRec = session.execute(grpstmt).scalar_one_or_none()
-                if groupRec is None:
-                    print("Menu group not found:", self.intmenuGroup)
-                    return
-                # update the group name
-                groupRec.GroupName = str(self.fldmenuGroupName.Value())
-                session.merge(groupRec)
-                session.commit()
-            #endwith get_cMenu_session() as session:
+        # fldmenuGroupName = self.fieldDefs['+GroupName'].get('widget')  # type: ignore
+        fldmenuGroupName = self._formWidgets['+GroupName']
+        
+        if fldmenuGroupName.isDirty():  # type: ignore
+            # update the menu group name in menuGroups table
+            groupRec = Repository(get_cMenu_sessionmaker(), menuGroups).get_by_id(self.intmenuGroup)
+            if groupRec is None:
+                print("Menu group not found:", self.intmenuGroup)
+                return
+            groupRec.GroupName = str(fldmenuGroupName.Value())  # type: ignore
+            Repository(get_cMenu_sessionmaker(), menuGroups).update(groupRec)
+            # grpstmt = select(menuGroups).where(menuGroups.id == self.intmenuGroup)
+            # with cMenu_Session() as session:
+            #     groupRec = session.execute(grpstmt).scalar_one_or_none()
+            #     if groupRec is None:
+            #         print("Menu group not found:", self.intmenuGroup)
+            #         return
+            #     # update the group name
+            #     groupRec.GroupName = str(fldmenuGroupName.Value())  # type: ignore
+            #     session.merge(groupRec)
+            #     session.commit()
+            # #endwith cMenu_Session() as session:
         #endif self.isWdgtDirty(self.fldmenuGroupName)
 
         if cRec is not None:
-            with get_cMenu_session() as session:
-                session.merge(cRec)
-                session.commit()
+            Repository(get_cMenu_sessionmaker(), menuItems).update(cRec)
+            # with cMenu_Session() as session:
+            #     session.merge(cRec)
+            #     session.commit()
 
-        self.setFormDirty(self, False)
+        self.setDirty(False)
     # writeRecord
-
 
     ##########################################
     ########    Delete
@@ -1426,53 +1473,28 @@ class cEditMenu(QWidget):
         pleaseWriteMe('Remove Menu', parent=self)
         return
         
-        (mGrp, mnu, mOpt) = (self.currRec.MenuGroup, self.currRec.MenuID, self.currRec.OptionNumber)
+        (mGrp, mnu, mOpt) = (self.currRec().MenuGroup, self.currRec().MenuID, self.currRec().OptionNumber)
         
         # verify delete
         
         # remove from db
-        if self.currRec.pk:
-            self.currRec.delete()
+        if self.currRec().pk:
+            self.currRec().delete()
         
         # replace with an "next" record
-        self.currRec = menuItems_QT(
+        self.setcurrRec(menuItems_QT(
             MenuGroup = mGrp,
             MenuID = mnu,
             OptionNumber = mOpt,
-            )
-
+            ))
 
     ##########################################
-    ########    CRUD support
-
-    @Slot(QWidget, bool)   #type: ignore
-    def setFormDirty(self, wdgt:QWidget, dirty:bool = True):
-        if wdgt.property('noedit'):
-            return
-        
-        wdgt.setProperty('dirty', dirty)
-        # if wdgt === self, set all children dirty
-        if wdgt is not self:
-            if dirty: self.setProperty('dirty',True)
-        else:
-            for W in self.children():
-                if isinstance(W, (QLineEdit, QTextEdit, QCheckBox, QComboBox, QDateEdit, )):
-                    W.setProperty('dirty', dirty)
-        
-        # enable btnCommit if anything dirty
-        self.btnCommit.setEnabled(self.property('dirty'))
-    
-    def isFormDirty(self) -> bool:
-        return self.property('dirty')
-
-    def isWdgtDirty(self, wdgt:QWidget) -> bool:
-        return wdgt.property('dirty')
-
+    ########    object status
 
     ##########################################
     ########    Widget-responding procs
-# class EditMenu
 
+# class cWidgetMenuItem
 
 #############################################
 #############################################

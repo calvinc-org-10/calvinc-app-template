@@ -3,7 +3,7 @@
 from app import forms
 from app import forms_testing
 
-from _newcode import EditMenuTest
+# from _newcode import EditMenuTest
 
 # def LoadAdmin(parent):
 def LoadAdmin():
@@ -18,7 +18,7 @@ def LoadAdmin():
 
 FormNameToURL_Map = {}
 # FormNameToURL_Map['menu Argument'.lower()] = (url, view)
-FormNameToURL_Map['editmenu-test'.lower()] = (None, EditMenuTest)
+# FormNameToURL_Map['editmenu-test'.lower()] = (None, EditMenuTest)
 # FormNameToURL_Map['l10-wics-uadmin'.lower()] = (None, fnWICSuserForm)
 # FormNameToURL_Map['l6-wics-uadmin'.lower()] = FormNameToURL_Map['l10-wics-uadmin']
 
