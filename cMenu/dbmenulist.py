@@ -173,11 +173,7 @@ class MenuRecords:
     @classmethod
     def menuGroupsDict(cls) -> Dict[str, int]:
         """Return a dictionary mapping GroupName to id for all menu groups."""
-        # TODO: generalize this to work with any table (return a dict of {id:record})
         listmenuGroups = recordsetList(menuGroups, retFlds=['GroupName', 'id'], ssnmaker=get_cMenu_sessionmaker(), orderby='GroupName')
-        # stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
-        # with get_cMenu_session() as session:
-        #     retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
         retDict = {row['GroupName']: row['id'] for row in listmenuGroups}
         return retDict
 

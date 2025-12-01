@@ -93,46 +93,6 @@ class calvindate(datetime):
 
         return exclSet.after(afterdate,include_afterdate)
     
-    # operators
-    # def __comparison_workhorse__(self, RHE, compOpr):
-    #     LHExpr = calvindate(self).as_datetime()
-    #     RHExpr = calvindate(RHE).as_datetime()
-    #     if compOpr == 'lt':
-    #         return LHExpr < RHExpr
-    #     if compOpr == 'le':
-    #         return LHExpr <= RHExpr
-    #     if compOpr == 'eq':
-    #         return LHExpr == RHExpr
-    #     if compOpr == 'ne':
-    #         return LHExpr != RHExpr
-    #     if compOpr == 'gt':
-    #         return LHExpr > RHExpr
-    #     if compOpr == 'ge':
-    #         return LHExpr >= RHExpr
-    #     return False
-    # def __lt__(self, other):
-    #     return self.__comparison_workhorse__(other,'lt')
-    # def __le__(self, other):
-    #     return self.__comparison_workhorse__(other,'le')
-    # def __eq__(self, other):
-    #     return self.__comparison_workhorse__(other,'eq')
-    # def __ne__(self, other):
-    #     return self.__comparison_workhorse__(other,'ne')
-    # def __gt__(self, other):
-    #     return self.__comparison_workhorse__(other,'gt')
-    # def __ge__(self, other):
-    #     return self.__comparison_workhorse__(other,'ge')
-    # def __add__(self, other):
-    #     if isinstance(other, int):
-    #         return self.daysfrom(other)
-    #     else:
-    #         return NotImplemented
-    # def __sub__(self, other):
-    #     if isinstance(other, int):
-    #         return self.daysfrom(-other)
-    #     else:
-    #         return NotImplemented
-
     def __str__(self) -> str:
         strfmt = "%Y-%m-%d" if self.hour == 0 and self.minute == 0 and self.second == 0 else "%Y-%m-%d %H:%M:%S"
         return self.strftime(strfmt)

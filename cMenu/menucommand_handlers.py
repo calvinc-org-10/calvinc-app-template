@@ -6,8 +6,6 @@ import webbrowser
 from PySide6.QtCore import (Qt, QObject,
     Signal, Slot, 
     QAbstractTableModel, QModelIndex, )
-# from PySide6.QtSql import (QSqlRecord, QSqlQuery, QSqlQueryModel, QSqlDatabase, )
-# from PySide6.QtSql import (QSqlQueryModel, )
 from PySide6.QtGui import (QFont, QIcon, )
 from PySide6.QtWidgets import ( QBoxLayout, QLayout, QStyle, QTabWidget, 
     QWidget, QGridLayout, QHBoxLayout, QVBoxLayout, QFormLayout, QFrame, 
@@ -59,10 +57,6 @@ _NUM_menuBUTNCOLS:int = 2
 _NUM_menuBTNperCOL: int = int(_NUM_menuBUTTONS/_NUM_menuBUTNCOLS)
 
 Nochoice = {'---': None}    # only needed for combo boxes, not datalists
-
-# fontFormTitle = QFont()
-# fontFormTitle.setFamilies([u"Copperplate Gothic"])
-# fontFormTitle.setPointSize(24)
 
 
 def FormBrowse(parntWind, formname, *args, **kwargs) -> Any|None:
@@ -1146,11 +1140,7 @@ class cEditMenu(cSimpleRecordForm):
     ########    menu and Group dicts
 
     def dictmenuGroups(self) -> Dict[str, int]:
-        # rs = self.menuSOURCE().recordsetList(['MenuGroup_id', 'GroupName'])
-        rs = MenuRecords.menuGroupsDict()
-        # retDict = {d['GroupName']:d['MenuGroup_id'] for d in rs}
-        retDict = rs
-        return retDict
+        return MenuRecords.menuGroupsDict()
     def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
         tbl = self.menuSOURCE()
         rs = tbl.recordsetList(['MenuID', 'OptionText'], f'MenuGroup_id = {mnuGrp} AND OptionNumber = 0')
@@ -1166,8 +1156,6 @@ class cEditMenu(cSimpleRecordForm):
         menuGroup = self.intmenuGroup
         menuID = self.intmenuID
         menuItemRecs = self.currentMenu
-        # menuItemRecs.setFilter('OptionNumber=0')
-        # menuHdrRec:QSqlRecord = self.movetoutil_findrecwithvalue(menuItemRecs,'OptionNumber',0)
         menuHdrRec:menuItems = menuItemRecs[0]
         
         # set header elements
@@ -1175,11 +1163,6 @@ class cEditMenu(cSimpleRecordForm):
         self.fldmenuGroup.setValue(str(menuGroup)) # type: ignore
 
         r = Repository(get_cMenu_sessionmaker(), menuGroups).get_by_id(menuGroup)
-        # stmt = select(menuGroups.GroupName).where(menuGroups.id == menuGroup)
-        # with cMenu_Session() as session:
-        #     result = session.execute(stmt)
-        #     group_name = result.scalar_one_or_none()
-        # GpName = group_name if group_name else ""
         GpName = r.GroupName # type: ignore
 
         self.fldmenuGroupName.setValue(GpName) # type: ignore
@@ -1222,8 +1205,6 @@ class cEditMenu(cSimpleRecordForm):
         mItmW = self.WmenuItm[0].width()
         padW = 70
         multH = 1.5
-        # TODO: adjust scroller size based on number of items (do the line below)
-        # self.layoutManinMenu_scrollerWidget.setMinimumSize(mItmW*2+10, mItmH)
         assert isinstance(self.layoutForm, cGridWidget), "layoutForm is not a cGridWidget"
         self.layoutForm._scroller.setMinimumSize(mItmW*2+padW, multH*mItmH)     # type: ignore
         
@@ -1244,11 +1225,6 @@ class cEditMenu(cSimpleRecordForm):
             )
             newrec = Repository(get_cMenu_sessionmaker(), menuGroups).add(newrec)
             grppk = newrec.id            
-            # with cMenu_Session() as session:
-            #     session.add(newrec)
-            #     session.commit()
-            #     # get the primary key of the new record
-            #     grppk = newrec.id            
 
             # create a default menu
             # newgroupnewmenu_menulist to menuItems
@@ -1270,9 +1246,6 @@ class cEditMenu(cSimpleRecordForm):
                 )
                 # save the new record
                 Repository(get_cMenu_sessionmaker(), menuItems).add(newmenurec)
-                # with cMenu_Session() as session:
-                #     session.add(newmenurec)
-                #     session.commit()
 
             self.loadMenu(grppk, 0)
         return
@@ -1357,7 +1330,6 @@ class cEditMenu(cSimpleRecordForm):
         
         if SRC.menuExist(menuGroup, menuID):
             self.currentMenu = SRC.menuDBRecs(menuGroup, menuID)
-            # self.currRec = self.movetoutil_findrecwithvalue(self.currentMenu, 'OptionNumber', 0)
             self.setcurrRec(self.currentMenu[0])  # am I safe in assuming existence?
             self.setDirty(False)       # should this be in displayMenu ?
             self.displayMenu()
@@ -1442,24 +1414,10 @@ class cEditMenu(cSimpleRecordForm):
                 return
             groupRec.GroupName = str(fldmenuGroupName.Value())  # type: ignore
             Repository(get_cMenu_sessionmaker(), menuGroups).update(groupRec)
-            # grpstmt = select(menuGroups).where(menuGroups.id == self.intmenuGroup)
-            # with cMenu_Session() as session:
-            #     groupRec = session.execute(grpstmt).scalar_one_or_none()
-            #     if groupRec is None:
-            #         print("Menu group not found:", self.intmenuGroup)
-            #         return
-            #     # update the group name
-            #     groupRec.GroupName = str(fldmenuGroupName.Value())  # type: ignore
-            #     session.merge(groupRec)
-            #     session.commit()
-            # #endwith cMenu_Session() as session:
         #endif self.isWdgtDirty(self.fldmenuGroupName)
 
         if cRec is not None:
             Repository(get_cMenu_sessionmaker(), menuItems).update(cRec)
-            # with cMenu_Session() as session:
-            #     session.merge(cRec)
-            #     session.commit()
 
         self.setDirty(False)
     # writeRecord
@@ -1721,6 +1679,8 @@ class _internalForms:
     # ConstructSQLStatement = ''
     # LoadExtWebPage = '.-lod-ext-wbpg.-'
     # ChangePW = ''
+    # ChangeUser = ''
+    # ChangeMenuGroup = ''
     # EditParameters = ''
     # EditGreetings = ''
     IconThemeViewer = '.-icn-thm-vwr.-'

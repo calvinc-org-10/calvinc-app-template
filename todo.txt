@@ -1,3 +1,4 @@
+TODO: cleanup/conform: dbmenulist
 TODO: move clearLayout to prototype utils, better yet, move utils to prototype
 TODO: pragma foreign_keys = ON; for each db connection
 TODO: convert session.query() calls to session.select()

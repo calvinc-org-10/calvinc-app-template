@@ -644,13 +644,6 @@ class cQFmFldWidg(cSimpRecFmElement_Base):
             dirty (bool, optional): Whether to mark as dirty. If not given, dirty flag is not changed. Defaults to None.
             sendSignal (bool, optional): Whether to emit dirtyChanged signal. Defaults to True.
         """
-        # if self.isInternalVarField():
-        #     self._dirty = False
-        #     return
-        # if self._dirty == dirty:
-        #     return
-        # self._dirty = dirty
-        
         # sometimes we want to force the dirty flag even if value matches
         if isinstance(dirty, bool):
             self._loaded_value_changed = dirty
@@ -1936,28 +1929,6 @@ class cSimpleRecordForm_Base(QWidget):
             btnCommit.setEnabled(self.isDirty()) # type: ignore
     # setFormDirty
     
-    # the old code
-    # def isDirty(self, widg = None) -> bool:
-    #     """Check if any form element is dirty.
-        
-    #     Returns:
-    #         bool: True if any child element has been modified, False otherwise.
-    #     """
-    #     target_widget = widg if widg is not None else self
-    #     if not hasattr(target_widget, '_formWidgets'):
-    #         return False
-            
-    #     # poll cQFmWidget children; if one is Dirty, form is Dirty
-    #     for FmElement in target_widget._formWidgets.values():
-    #         if not isinstance(FmElement, cSimpRecFmElement_Base):
-    #             if self.isDirty(FmElement):
-    #                 return True
-    #         elif FmElement.isDirty():
-    #             return True
-    #     #endfor FmElement in self.children():
-        
-    #     return False
-    # I'm rewriting isDirty to use any() and a generator expression
     def isDirty(self) -> bool:
         """Check if any form element is dirty."""
         # any() stops and returns True as soon as it finds the first True
@@ -2660,23 +2631,6 @@ class cSimpleRecordSubForm2(cSimpRecFmElement_Base, cSimpleRecordForm_Base):
         return
     # _buildPages
         
-    # def _finalizeMainLayout(self):
-    #     assert isinstance(self.layoutMain, QBoxLayout), 'layoutMain must be a Box Layout'
-        
-    #     lyout = getattr(self, 'layoutFormHdr', None)
-    #     if isinstance(lyout, QLayout):
-    #         self.layoutMain.addLayout(lyout)
-    #     lyout = getattr(self, 'layoutForm', None)
-    #     if isinstance(lyout, QLayout):
-    #         self.layoutMain.addLayout(lyout)
-    #     lyout = getattr(self, 'layoutButtons', None)
-    #     if isinstance(lyout, QLayout):
-    #         self.layoutMain.addLayout(lyout)
-    #     lyout = getattr(self, '_statusBar', None)
-    #     if isinstance(lyout, QLayout):
-    #         self.layoutMain.addLayout(lyout)            #TODO: more flexibility in where status bar is placed
-    # # _finalizeMainLayout
-
     def _placeFields(self, layoutFormPages:QTabWidget, layoutFormFixedTop: QGridLayout|None, layoutFormFixedBottom: QGridLayout|None, lookupsAllowed: bool = True) -> None:
         """Place fields (handled by _addDisplayRow for list-based subforms)."""
         # field placement handled by _addDisplayRow, since they are placed in a list
@@ -2830,47 +2784,5 @@ class cSimpleRecordSubForm2(cSimpRecFmElement_Base, cSimpleRecordForm_Base):
     ########    Record Status
 
     # cSimpleRecordForm_Base already has this covered
-    # @Slot()
-    # def setDirty(self, wdgt, dirty: bool = True):
-    #     """Mark dirty state (currently a no-op as dirty tracking is delegated to child elements)."""
-    #     # rethink - adapters handle their own dirty state
-    #     # so all that needs to be set here is self.dirty
-    #     # right?
-
-    #     # better yet, self doesn't need to track its dirty state
-    #     # since  isDirty will poll children
-
-    #     # keep an eye on the time the polling takes
-    #     # if it's excessive, find the best way to record child dirty states
-
-    #     return
-    # # setFormDirty
-
-    # def isDirty(self, widg = None) -> bool:
-    #     """Check if any child form element is dirty.
-        
-    #     Returns:
-    #         bool: True if any child element has been modified, False otherwise.
-    #     """
-    #     # poll children; if one is Dirty, form is Dirty
-    #     if widg is None:
-    #         widg = self
-            
-    #     # poll children; if one is Dirty, form is Dirty
-    #     for FmElement in widg.children():
-    #         if not isinstance(FmElement, cSimpRecFmElement_Base):
-    #             dirtyState = self.isDirty(FmElement)
-    #             if dirtyState:
-    #                 return True
-    #             else:
-    #                 continue
-    #         elif FmElement.isDirty():
-    #             return True
-    #         else:
-    #             continue
-    #     #endfor FmElement in self.children():
-        
-    #     return False
-    # # isDirty
 
 #endclass cSubRecordForm2
