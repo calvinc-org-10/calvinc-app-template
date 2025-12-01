@@ -10,7 +10,7 @@ from PySide6.QtCore import (QObject, )
 from PySide6.QtWidgets import (QApplication, )
 from .utils import (pleaseWriteMe, )
 
-from .database import cMenu_Session
+from .database import (get_cMenu_sessionmaker, get_cMenu_session, )
 from .menucommand_constants import MENUCOMMANDS, COMMANDNUMBER
 from .dbmenulist import (newgroupnewmenu_menulist, )
 
@@ -195,12 +195,12 @@ class menuItems(cMenuBase):
         If the menuGroups table doesn't exist, it will also be created, and a starter group and menu will be added.
         :param kw: Keyword arguments for the menuItems instance.
         """
-        inspector = inspect(cMenu_Session().get_bind())
+        inspector = inspect(get_cMenu_session().get_bind())
         if not inspector.has_table(self.__tablename__):
             # If the table does not exist, create it
-            cMenuBase.metadata.create_all(cMenu_Session().get_bind())
+            cMenuBase.metadata.create_all(get_cMenu_session().get_bind())
             # Optionally, you can also create a starter group and menu here
-            menuGroups._createtable(cMenu_Session().get_bind())
+            menuGroups._createtable(get_cMenu_session().get_bind())
         #endif not inspector.has_table():
         super().__init__(**kw)
 
@@ -236,7 +236,7 @@ class cParameters(cMenuBase):
     # :param parmname: The name of the parameter to retrieve.
     # :return: The value of the parameter or an empty string if not found.
     # """
-    # session = cMenu_Session()
+    # session = get_cMenu_session()
     # try:
     #     param = session.query(cParameters).filter_by(ParmName=parmname).first()
     #     return param.ParmValue if param else ''
@@ -272,9 +272,9 @@ class cGreetings(cMenuBase):
         return f"{self.Greeting} (ID: {self.id})"
 
 
-cMenuBase.metadata.create_all(cMenu_Session().get_bind())
+cMenuBase.metadata.create_all(get_cMenu_session().get_bind())
 # Ensure that the tables are created when the module is imported
-menuGroups._createtable(cMenu_Session().get_bind())
-menuItems() #._createtable(cMenu_Session().get_bind())
-cParameters() #._createtable(cMenu_Session().get_bind())
-cGreetings() #._createtable(cMenu_Session().get_bind())
+menuGroups._createtable(get_cMenu_session().get_bind())
+menuItems() #._createtable(get_cMenu_session().get_bind())
+cParameters() #._createtable(get_cMenu_session().get_bind())
+cGreetings() #._createtable(get_cMenu_session().get_bind())

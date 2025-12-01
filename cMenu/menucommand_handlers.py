@@ -30,7 +30,7 @@ from cMenu.utils import areYouSure, cComboBoxFromDict, cSimpleRecordForm_Base, c
 from menuformname_viewMap import FormNameToURL_Map
 from externalWebPageURL_Map import ExternalWebPageURL_Map
 
-from .database import cMenu_Session
+from .database import (get_cMenu_sessionmaker, get_cMenu_session, )
 from .dbmenulist import (MenuRecords, newgroupnewmenu_menulist, newmenu_menulist, )
 from sysver import sysver
 from .menucommand_constants import MENUCOMMANDS, COMMANDNUMBER
@@ -42,7 +42,7 @@ from .utils import (cComboBoxFromDict, cQFmFldWidg, cQFmNameLabel, cQFmNameLabel
     pleaseWriteMe,  
     )
 
-from app.database import app_Session
+from app.database import (get_app_sessionmaker, get_app_session, )
 
 # copied from cMenu - if you change it here, change it there
 _NUM_menuBUTTONS:int = 20
@@ -350,7 +350,7 @@ class cMRunSQL(QWidget):
     @Slot(str)  #type: ignore
     def rawSQLexec(self, inputSQL:str):
         #TODO: choose session - put in user control
-        engine = app_Session.kw["bind"]
+        engine = get_app_sessionmaker().kw["bind"]
 
         self.qmodel = SQLAlchemySQLQueryModel(inputSQL, engine)
 
@@ -519,7 +519,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     This docstring documents the public behaviors and expectations of cWidgetMenuItem_tst.
     """
     _ORMmodel = menuItems
-    _ssnmaker = cMenu_Session
+    _ssnmaker = get_cMenu_sessionmaker()
     fieldDefs = {
         'OptionNumber': {'label': 'Option Number', 'widgetType': QLineEdit, 'position': (0,0), 'noedit': True, 'readonly': True, 'frame': False, 'maximumWidth': 25, 'focusPolicy': Qt.FocusPolicy.NoFocus, 'focusable': Qt.FocusPolicy.NoFocus, },
         'OptionText': {'label': 'OptionText', 'widgetType': QLineEdit, 'position': (0,1,1,2)},
@@ -610,7 +610,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         def dictmenuGroup(self) -> Dict[str, int]:
             # TODO: generalize this to work with any table (return a dict of {id:record})
             stmt = select(menuGroups.GroupName, menuGroups.id).select_from(menuGroups).order_by(menuGroups.GroupName)
-            with cMenu_Session() as session:
+            with get_cMenu_session() as session:
                 retDict = {row.GroupName: row.id for row in session.execute(stmt).all()}
             return retDict
         def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
@@ -618,7 +618,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
                 menuItems.MenuGroup_id == mnuGrp,
                 menuItems.OptionNumber == 0,  # only return the main menu items
             ).order_by(menuItems.OptionText)
-            with cMenu_Session() as session:
+            with get_cMenu_session() as session:
                 rs = session.execute(stmt).all()
                 # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
                 retDict = Nochoice | {row.OptionText: row.MenuID for row in rs}
@@ -629,7 +629,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
                 menuItems.MenuID == mnuID,
                 menuItems.MenuGroup_id == mnuGrp,
             )
-            with cMenu_Session() as session:
+            with get_cMenu_session() as session:
                 rs = session.execute(stmt).all()
                 definedOptions = [rec.OptionNumber for rec in rs]
             # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
@@ -886,7 +886,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
             new_rec.MenuID = newMnuID[1]            # type: ignore
             new_rec.OptionNumber = newMnuID[2]      # type: ignore
 
-            with cMenu_Session() as session:
+            with get_cMenu_session() as session:
                 session.add(new_rec)
                 session.commit()
 
@@ -896,7 +896,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
                 pk = cRec.id
                 rslt = "No record to delete"
                 if pk:
-                    with cMenu_Session() as session:
+                    with get_cMenu_session() as session:
                         session.delete(cRec)
                         session.commit()
                 #endif pk
@@ -1165,7 +1165,7 @@ class cEditMenu(QWidget):
                 GroupName=grpName,
                 GroupInfo=grpInfo,
             )
-            with cMenu_Session() as session:
+            with get_cMenu_session() as session:
                 session.add(newrec)
                 session.commit()
                 # get the primary key of the new record
@@ -1188,7 +1188,7 @@ class cEditMenu(QWidget):
                     BottomLine=rec['BottomLine'],
                 )
                 # save the new record
-                with cMenu_Session() as session:
+                with get_cMenu_session() as session:
                     session.add(newmenurec)
                     session.commit()
                 # add the new record to the menuItems table
@@ -1205,7 +1205,7 @@ class cEditMenu(QWidget):
         if retval:
             assert isinstance(newMnuID, int) and newMnuID >= 0, "New Menu ID must be a non-negative integer"
             qsFrom = self.currentMenu
-            with cMenu_Session() as session:         
+            with get_cMenu_session() as session:         
                 if CMChoiceCopy:
                     qsTo: Dict[int, menuItems] = {}     # qsTo is technically not used, but being built JIC its needed later
                     for i, orig_rec in qsFrom.items():
@@ -1233,7 +1233,7 @@ class cEditMenu(QWidget):
                 
                 self.loadMenu(mnuGrp, newMnuID)
                 
-            #endwith cMenu_Session() as session:
+            #endwith get_cMenu_session() as session:
         #endif retval
 
         return
@@ -1269,7 +1269,7 @@ class cEditMenu(QWidget):
         self.fldmenuGroup.setValue(str(menuGroup)) # type: ignore
 
         stmt = select(menuGroups.GroupName).where(menuGroups.id == menuGroup)
-        with cMenu_Session() as session:
+        with get_cMenu_session() as session:
             result = session.execute(stmt)
             group_name = result.scalar_one_or_none()
         GpName = group_name if group_name else ""
@@ -1396,7 +1396,7 @@ class cEditMenu(QWidget):
         
         if self.isWdgtDirty(self.fldmenuGroupName):
             grpstmt = select(menuGroups).where(menuGroups.id == self.intmenuGroup)
-            with cMenu_Session() as session:
+            with get_cMenu_session() as session:
                 groupRec = session.execute(grpstmt).scalar_one_or_none()
                 if groupRec is None:
                     print("Menu group not found:", self.intmenuGroup)
@@ -1405,11 +1405,11 @@ class cEditMenu(QWidget):
                 groupRec.GroupName = str(self.fldmenuGroupName.Value())
                 session.merge(groupRec)
                 session.commit()
-            #endwith cMenu_Session() as session:
+            #endwith get_cMenu_session() as session:
         #endif self.isWdgtDirty(self.fldmenuGroupName)
 
         if cRec is not None:
-            with cMenu_Session() as session:
+            with get_cMenu_session() as session:
                 session.merge(cRec)
                 session.commit()
 
@@ -1479,13 +1479,13 @@ class cEditMenu(QWidget):
 #############################################
 
 
-from app.database import app_Session
+from app.database import get_app_sessionmaker
 class OpenTable(QWidget):
     
     class cOpnTblDlgGetTable(QDialog):
         _tableListSQL:str = 'PRAGMA table_list;'
         
-        def __init__(self, db:Engine = app_Session.kw["bind"], parent:QWidget|None = None):
+        def __init__(self, db:Engine = get_app_sessionmaker().kw["bind"], parent:QWidget|None = None):
             super().__init__(parent)
             
             self.setWindowModality(Qt.WindowModality.WindowModal)
@@ -1511,7 +1511,7 @@ class OpenTable(QWidget):
             
             self.setLayout(layoutMine)
 
-        def TableList(self, db:Engine = app_Session.kw["bind"]) -> List:
+        def TableList(self, db:Engine = get_app_sessionmaker().kw["bind"]) -> List:
             qmodel = SQLAlchemySQLQueryModel(self._tableListSQL, db)
             
             colIdx = qmodel.colIndex('name')
@@ -1532,7 +1532,7 @@ class OpenTable(QWidget):
                 self.combobxTableName.currentText()    if ret==self.DialogCode.Accepted else None,
                 )
     
-    def __init__(self, tbl:str|None = None, db:Engine=app_Session.kw["bind"], parent:QWidget|None = None):
+    def __init__(self, tbl:str|None = None, db:Engine=get_app_sessionmaker().kw["bind"], parent:QWidget|None = None):
         super().__init__(parent)
         
         # font = QFont()
@@ -1611,7 +1611,7 @@ class OpenTable(QWidget):
         self.layoutForm.addLayout(self.layoutFormMain)
         # self.layoutForm.addLayout(layoutButtons)
         
-    def chooseTable(self, db:Engine = app_Session.kw["bind"]) -> str|None:
+    def chooseTable(self, db:Engine = get_app_sessionmaker().kw["bind"]) -> str|None:
         dlg = self.cOpnTblDlgGetTable(db, self)
         retval, tblName = dlg.exec_DlgGetTbl()
         return tblName if retval == QDialog.DialogCode.Accepted else None

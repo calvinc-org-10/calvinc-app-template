@@ -136,7 +136,7 @@ class MenuRecords:
             )
         with get_cMenu_session() as session:
             retval = session.scalar(stmt)
-        if not retval:
+        if retval is None:
             # If no record found, we need to find the minimum MenuID for this group
             retval = cls.minMenuID_forGroup(mGroup)
         return retval
@@ -171,7 +171,7 @@ class MenuRecords:
         return retDict
 
     @classmethod
-    def menuGroupDict(cls) -> Dict[str, int]:
+    def menuGroupsDict(cls) -> Dict[str, int]:
         """Return a dictionary mapping GroupName to id for all menu groups."""
         # TODO: generalize this to work with any table (return a dict of {id:record})
         listmenuGroups = recordsetList(menuGroups, retFlds=['GroupName', 'id'], ssnmaker=get_cMenu_sessionmaker(), orderby='GroupName')

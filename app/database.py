@@ -45,12 +45,12 @@ app_engine = create_engine(
     f"sqlite:///{app_dbName}",
     )
 # a sessionmaker(), also in the same scope as the engine
-app_Session = sessionmaker(app_engine)
+_app_Session = sessionmaker(app_engine)
 
 def get_app_session():
-    return app_Session()
+    return _app_Session()
 def get_app_sessionmaker():
-    return app_Session
+    return _app_Session
 
 ##########################################################
 ###################    REPOSITORIES    ###################

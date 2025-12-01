@@ -8,7 +8,7 @@ import types
 MENUCOMMANDS = {
     # CommandNumber: CommandText
     0: '',     #'Null Command',
-    1: 'LoadMenu',
+    1:  'LoadMenu',
     11: 'FormBrowse',
     15: 'OpenTable',
     21: 'RunCode',
@@ -16,6 +16,8 @@ MENUCOMMANDS = {
     32: 'ConstructSQLStatement',
     36: 'LoadExtWebPage',
     51: 'ChangePW',
+    62: 'ChangeUser',
+    63: 'ChangeMenuGroup',
     91: 'EditMenu',
     92: 'EditParameters',
     93: 'EditGreetings',

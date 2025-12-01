@@ -207,45 +207,48 @@ class cMenu(QWidget):
         # return
         CommandNum = menuItem['Command']
         CommandArg = menuItem['Argument']
+        CommandText = MENUCOMMANDS.get(CommandNum)
 
-        if MENUCOMMANDS.get(CommandNum) == 'LoadMenu' :
+        if CommandText == 'LoadMenu' :
             CommandArg = int(CommandArg)
             self.loadMenu(self.menuGroup, CommandArg)
-        elif MENUCOMMANDS.get(CommandNum) == 'FormBrowse':
+        elif CommandText == 'FormBrowse':
             frm = menucommand_handlers.FormBrowse(self, CommandArg.lower())
             if frm is not None: 
                 self.open_childScreen(CommandArg, frm)
-        elif MENUCOMMANDS.get(CommandNum) == 'OpenTable' :
+        elif CommandText == 'OpenTable' :
             CmdFm = menucommand_handlers._internalForms.OpenTable
             frm = menucommand_handlers.FormBrowse(self, CmdFm, CommandArg)
             if frm is not None: 
                 self.open_childScreen(CmdFm, frm)
-        elif MENUCOMMANDS.get(CommandNum) == 'RunSQLStatement':
+        elif CommandText == 'RunSQLStatement':
             CmdFm = menucommand_handlers._internalForms.RunSQLStatement
             frm = menucommand_handlers.FormBrowse(self, CmdFm)
             if frm is not None: 
                 self.open_childScreen(CmdFm, frm)
-        # elif MENUCOMMANDS.get(CommandNum) == 'ConstructSQLStatement':
+        # elif CommandText == 'ConstructSQLStatement':
         #    pass
-        elif MENUCOMMANDS.get(CommandNum)  == 'LoadExtWebPage':
+        elif CommandText  == 'LoadExtWebPage':
             menucommand_handlers.loadExternalWebPage(CommandArg)
             return
             # retHTTP = fn_LoadExtWebPage(req, CommandArg)
-        # elif MENUCOMMANDS.get(CommandNum) == 'ChangePW':
+        # elif CommandText == 'ChangePW':
         #     return
             # return redirect('change_password')
-        elif MENUCOMMANDS.get(CommandNum) == 'EditMenu':
+        # elif CommandText == 'ChangeUser':
+        # elif CommandText == 'ChangeMenuGroup':
+        elif CommandText == 'EditMenu':
             CmdFm = menucommand_handlers._internalForms.EditMenu
             frm = menucommand_handlers.FormBrowse(self, CmdFm, MainMenuWindow=self)
             if frm: 
                 self.open_childScreen(CmdFm, frm)
-        # elif MENUCOMMANDS.get(CommandNum) == 'EditParameters':
+        # elif CommandText == 'EditParameters':
         #     return
             # return redirect('EditParms')
-        # elif MENUCOMMANDS.get(CommandNum) == 'EditGreetings':
+        # elif CommandText == 'EditGreetings':
         #     return
             # return redirect('Greetings')
-        elif MENUCOMMANDS.get(CommandNum) == 'ExitApplication':
+        elif CommandText == 'ExitApplication':
             # exit the application
             appinst = QApplication.instance()
             if appinst is not None:
@@ -257,7 +260,7 @@ class cMenu(QWidget):
             msg.setWindowTitle('Command Not Implemented')
             msg.setIcon(QMessageBox.Icon.Information)
             msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-            msg.setText(f'Command {MENUCOMMANDS.get(CommandNum)} will be implemented later')
+            msg.setText(f'Command {CommandText} will be implemented later')
             msg.open()
         else:
             # invalid Command Number
@@ -267,7 +270,7 @@ class cMenu(QWidget):
             msg.setStandardButtons(QMessageBox.StandardButton.Ok)
             msg.setText(f'{CommandNum} is an invalid Command Number!')
             msg.open()
-        # case MENUCOMMANDS.get(CommandNum)
+        # case MENUCOMMANDS.get(CommandNum) aka CommandText
     # handleMenuButtonClick
 
 ###############################################################

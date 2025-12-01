@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 from sqlalchemy import (select, ) 
 from sqlalchemy.orm import make_transient
 
-from cMenu.database import cMenu_Session, get_cMenu_session, get_cMenu_sessionmaker, Repository
+from cMenu.database import get_cMenu_session, get_cMenu_sessionmaker, Repository
 from cMenu.dbmenulist import MenuRecords
 from cMenu.models import (menuGroups, menuItems, 
     newgroupnewmenu_menulist, )
@@ -167,7 +167,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
     This docstring documents the public behaviors and expectations of cWidgetMenuItem_tst.
     """
     _ORMmodel = menuItems
-    _ssnmaker = cMenu_Session
+    _ssnmaker = get_cMenu_sessionmaker()
     fieldDefs = {
         'OptionNumber': {'label': 'Option Number', 'widgetType': QLineEdit, 'position': (0,0), 'noedit': True, 'readonly': True, 'frame': False, 'maximumWidth': 25, 'focusPolicy': Qt.FocusPolicy.NoFocus, 'focusable': Qt.FocusPolicy.NoFocus, },
         'OptionText': {'label': 'OptionText', 'widgetType': QLineEdit, 'position': (0,1,1,2)},
@@ -278,7 +278,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         ########    menu and Group dicts
 
         def dictmenuGroup(self) -> Dict[str, int]:
-            return MenuRecords.menuGroupDict()
+            return MenuRecords.menuGroupsDict()
         # dictmenuGroup
             
         def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
@@ -288,7 +288,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
         
         def dictmenuOptions(self, mnuID:int) -> Mapping[str, int|None]:
             mnuGrp:int = self.combobxMenuGroupID.currentData()
-            listmenuItems = recordsetList(menuItems, retFlds=['OptionNumber'], where=f'MenuID={mnuID} AND MenuGroup_id={mnuGrp}', ssnmaker=cMenu_Session)
+            listmenuItems = recordsetList(menuItems, retFlds=['OptionNumber'], where=f'MenuID={mnuID} AND MenuGroup_id={mnuGrp}', ssnmaker=get_cMenu_sessionmaker())
             definedOptions = {rec['OptionNumber'] for rec in listmenuItems}
             # Nochoice = {'---': None}  # only needed for combo boxes, not datalists
             return Nochoice | { str(n+1): n+1 for n in range(_NUM_menuBUTTONS) if n+1 not in definedOptions }
@@ -576,7 +576,7 @@ class cWidgetMenuItem(cSimpleRecordForm_Base):
 
 class EditMenuTest(cSimpleRecordForm):
     _ORMmodel = menuItems
-    _ssnmaker = cMenu_Session
+    _ssnmaker = get_cMenu_sessionmaker()
     _formname = 'Edit Menu Test'
     fieldDefs = {
         '@MenuGroup_id': {'widgetType': cComboBoxFromDict, 'label': 'Menu Group', 'lookupHandler': 'loadMenuWithGroupID', 
@@ -668,10 +668,9 @@ class EditMenuTest(cSimpleRecordForm):
             layoutMenuID = QHBoxLayout()
             lblMenuID = QLabel(self.tr('Menu ID'))
             self.combobxMenuID = QComboBox(self)
-            #  definedMenus = menuItems.objects.filter(MenuGroup=mnuGrp, OptionNumber=0).values_list('MenuID', flat=True)
             
-            dictDefinedMenus = MenuRecords().recordsetList(['MenuID'], filter=f'MenuGroup_id={mnuGrp} AND OptionNumber=0')   # .objects.filter(MenuGroup=mnuGrp, OptionNumber=0).values_list('MenuID', flat=True)
-            definedMenus = [mDict['MenuID'] for mDict in dictDefinedMenus]
+            dictDefinedMenus = MenuRecords().recordsetList(['MenuID'], filter=f'MenuGroup_id={mnuGrp} AND OptionNumber=0')
+            definedMenus = {mDict['MenuID'] for mDict in dictDefinedMenus}
             self.combobxMenuID.addItems([str(n) for n in range(256) if n not in definedMenus])
             layoutMenuID.addWidget(lblMenuID)
             layoutMenuID.addWidget(self.combobxMenuID)
@@ -729,7 +728,7 @@ class EditMenuTest(cSimpleRecordForm):
         
         # self.fldmenuGroup = self.fieldDefs['@MenuGroup_id'].get('widget') 
         self.fldmenuGroup = self._lookupFrmElements['@MenuGroup_id']
-        self.fldmenuGroup.replaceDict(self.dictmenuGroup())    # type: ignore
+        self.fldmenuGroup.replaceDict(self.dictmenuGroups())    # type: ignore
         self.fldmenuGroupName = self._formWidgets.get('+GroupName') 
         
         self.loadMenu()
@@ -737,6 +736,9 @@ class EditMenuTest(cSimpleRecordForm):
 
     ##########################################
     ########    getters/setters
+
+    def menuSOURCE(self) -> Any:
+        return self._menuSOURCE
 
     ##########################################
     ########    Layout
@@ -748,8 +750,6 @@ class EditMenuTest(cSimpleRecordForm):
     # _addActionButtons
     
     def _finalizeMainLayout(self, layoutMain: QVBoxLayout, items: List | tuple) -> None:
-        self._menuSOURCE = MenuRecords()
-        
         self.lblnummenuGroupID:  QLCDNumber = QLCDNumber(3)
         self.lblnummenuGroupID.setMaximumSize(20,20)
         self.lblnummenuID:  QLCDNumber = QLCDNumber(3)
@@ -782,12 +782,14 @@ class EditMenuTest(cSimpleRecordForm):
     ##########################################
     ########    menu and Group dicts
 
-    def dictmenuGroup(self) -> Dict[str, int]:
-        rs = MenuRecords().recordsetList(['id', 'GroupName'])
-        retDict = {d['GroupName']:d['id'] for d in rs}
+    def dictmenuGroups(self) -> Dict[str, int]:
+        # rs = self.menuSOURCE().recordsetList(['MenuGroup_id', 'GroupName'])
+        rs = MenuRecords.menuGroupsDict()
+        # retDict = {d['GroupName']:d['MenuGroup_id'] for d in rs}
+        retDict = rs
         return retDict
     def dictmenus(self, mnuGrp:int) -> Mapping[str, int|None]:
-        tbl = MenuRecords()
+        tbl = self.menuSOURCE()
         rs = tbl.recordsetList(['MenuID', 'OptionText'], f'MenuGroup_id = {mnuGrp} AND OptionNumber = 0')
         retDict = Nochoice | {f"{d['OptionText']} ({d['MenuID']})":d['MenuID'] for d in rs}
         return retDict
@@ -809,15 +811,16 @@ class EditMenuTest(cSimpleRecordForm):
         self.lblnummenuGroupID.display(menuGroup)
         self.fldmenuGroup.setValue(str(menuGroup)) # type: ignore
 
-        stmt = select(menuGroups.GroupName).where(menuGroups.id == menuGroup)
-        with cMenu_Session() as session:
-            result = session.execute(stmt)
-            group_name = result.scalar_one_or_none()
-        GpName = group_name if group_name else ""
+        r = Repository(get_cMenu_sessionmaker(), menuGroups).get_by_id(menuGroup)
+        # stmt = select(menuGroups.GroupName).where(menuGroups.id == menuGroup)
+        # with cMenu_Session() as session:
+        #     result = session.execute(stmt)
+        #     group_name = result.scalar_one_or_none()
+        # GpName = group_name if group_name else ""
+        GpName = r.GroupName # type: ignore
 
         self.fldmenuGroupName.setValue(GpName) # type: ignore
         self.lblnummenuID.display(menuID)
-        d = self.dictmenus(menuGroup)
         fldmenuID = self.fieldDefs['@MenuID'].get('widget')        
         fldmenuID.replaceDict(self.dictmenus(menuGroup))  # type: ignore
         fldmenuID.setValue(menuID) # type: ignore
@@ -871,33 +874,37 @@ class EditMenuTest(cSimpleRecordForm):
                 GroupName=grpName,
                 GroupInfo=grpInfo,
             )
-            with cMenu_Session() as session:
-                session.add(newrec)
-                session.commit()
-                # get the primary key of the new record
-                grppk = newrec.id            
+            newrec = Repository(get_cMenu_sessionmaker(), menuGroups).add(newrec)
+            grppk = newrec.id            
+            # with cMenu_Session() as session:
+            #     session.add(newrec)
+            #     session.commit()
+            #     # get the primary key of the new record
+            #     grppk = newrec.id            
 
             # create a default menu
             # newgroupnewmenu_menulist to menuItems
             for rec in newgroupnewmenu_menulist:
                 # rec is a dict with keys: OptionNumber, OptionText, Command, Argument, PWord, TopLine, BottomLine
                 # create a new record in menuItems
+                # TODO: check for existing menu items with same MenuGroup_id and MenuID and OptionNumber?
+                # TODO: make sure rec has all required keys
                 newmenurec = menuItems(
                     MenuGroup_id=grppk,
                     MenuID=0,  # default menu ID
                     OptionNumber=rec['OptionNumber'],
-                    OptionText=rec['OptionText'],
-                    Command=rec['Command'],
-                    Argument=rec['Argument'],
-                    PWord=rec['PWord'],
-                    TopLine=rec['TopLine'],
-                    BottomLine=rec['BottomLine'],
+                    OptionText=rec.get( 'OptionText', ''),
+                    Command=rec.get('Command'),
+                    Argument=rec.get('Argument' ''),
+                    PWord=rec.get('PWord', ''),
+                    TopLine=rec.get('TopLine'),
+                    BottomLine=rec.get('BottomLine'),
                 )
                 # save the new record
-                with cMenu_Session() as session:
-                    session.add(newmenurec)
-                    session.commit()
-                # add the new record to the menuItems table
+                Repository(get_cMenu_sessionmaker(), menuItems).add(newmenurec)
+                # with cMenu_Session() as session:
+                #     session.add(newmenurec)
+                #     session.commit()
 
             self.loadMenu(grppk, 0)
         return
@@ -911,7 +918,7 @@ class EditMenuTest(cSimpleRecordForm):
         if retval:
             assert isinstance(newMnuID, int) and newMnuID >= 0, "New Menu ID must be a non-negative integer"
             qsFrom = self.currentMenu
-            with cMenu_Session() as session:         
+            with get_cMenu_session() as session:         
                 if CMChoiceCopy:
                     qsTo: Dict[int, menuItems] = {}     # qsTo is technically not used, but being built JIC its needed later
                     for i, orig_rec in qsFrom.items():
@@ -951,7 +958,7 @@ class EditMenuTest(cSimpleRecordForm):
     @Slot()
     def loadMenuWithGroupID(self, menuGroup:int):
         # menuGroup = self.fldmenuGroup.Value()  # type: ignore
-        menuID = self.fldmenuID.Value()        # type: ignore
+        menuID = self._DFLT_menuID
         if menuGroup is None or menuID is None:
             return
         self.loadMenu(int(menuGroup), int(menuID))
@@ -1060,23 +1067,31 @@ class EditMenuTest(cSimpleRecordForm):
         fldmenuGroupName = self._formWidgets['+GroupName']
         
         if fldmenuGroupName.isDirty():  # type: ignore
-            grpstmt = select(menuGroups).where(menuGroups.id == self.intmenuGroup)
-            with cMenu_Session() as session:
-                groupRec = session.execute(grpstmt).scalar_one_or_none()
-                if groupRec is None:
-                    print("Menu group not found:", self.intmenuGroup)
-                    return
-                # update the group name
-                groupRec.GroupName = str(fldmenuGroupName.Value())  # type: ignore
-                session.merge(groupRec)
-                session.commit()
-            #endwith cMenu_Session() as session:
+            # update the menu group name in menuGroups table
+            groupRec = Repository(get_cMenu_sessionmaker(), menuGroups).get_by_id(self.intmenuGroup)
+            if groupRec is None:
+                print("Menu group not found:", self.intmenuGroup)
+                return
+            groupRec.GroupName = str(fldmenuGroupName.Value())  # type: ignore
+            Repository(get_cMenu_sessionmaker(), menuGroups).update(groupRec)
+            # grpstmt = select(menuGroups).where(menuGroups.id == self.intmenuGroup)
+            # with cMenu_Session() as session:
+            #     groupRec = session.execute(grpstmt).scalar_one_or_none()
+            #     if groupRec is None:
+            #         print("Menu group not found:", self.intmenuGroup)
+            #         return
+            #     # update the group name
+            #     groupRec.GroupName = str(fldmenuGroupName.Value())  # type: ignore
+            #     session.merge(groupRec)
+            #     session.commit()
+            # #endwith cMenu_Session() as session:
         #endif self.isWdgtDirty(self.fldmenuGroupName)
 
         if cRec is not None:
-            with cMenu_Session() as session:
-                session.merge(cRec)
-                session.commit()
+            Repository(get_cMenu_sessionmaker(), menuItems).update(cRec)
+            # with cMenu_Session() as session:
+            #     session.merge(cRec)
+            #     session.commit()
 
         self.setDirty(False)
     # writeRecord

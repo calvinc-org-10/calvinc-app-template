@@ -29,7 +29,7 @@ from .cQWidgets import (cDataList, cComboBoxFromDict, cstdTabWidget, cGridWidget
 from .messageBoxes import (areYouSure, )
 from .SQLAlcTools import (get_primary_key_column, )
 
-from app.database import app_Session
+from app.database import (get_app_sessionmaker, get_app_session, )
 
 
 class cQFmConstants(Enum):
@@ -98,7 +98,7 @@ class cSimpleTableForm(QWidget):
     def __init__(self, 
         formname: str|None = None, 
         tbl: Type[Any]|None = None, 
-        ssnmaker: sessionmaker[Session] = app_Session, 
+        ssnmaker: sessionmaker[Session] = get_app_sessionmaker(), 
         parent: QWidget|None = None
         ):
         """Initialize the SimpleTableForm.
@@ -1244,7 +1244,7 @@ class cSimpleRecordForm_Base(QWidget):
         # _apply_opt_attr
 
         ssnmkr = self.ssnmaker()
-        ssnmkr = ssnmkr if ssnmkr else app_Session
+        ssnmkr = ssnmkr if ssnmkr else get_app_sessionmaker()
         mdl = self.ORMmodel()
         assert mdl is not None, "ORMmodel must be set before placing fields"
     

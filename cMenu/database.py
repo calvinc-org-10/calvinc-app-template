@@ -12,12 +12,12 @@ cMenu_engine = create_engine(
     f"sqlite:///{cMenu_dbName}",
     )
 # a sessionmaker(), also in the same scope as the engine
-cMenu_Session = sessionmaker(cMenu_engine)
+_cMenu_Session = sessionmaker(cMenu_engine)
 
 def get_cMenu_session():
-    return cMenu_Session()
+    return _cMenu_Session()
 def get_cMenu_sessionmaker():
-    return cMenu_Session
+    return _cMenu_Session
 
 ##########################################################
 ###################    REPOSITORIES    ###################
