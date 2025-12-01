@@ -341,6 +341,7 @@ class cGridWidget(QWidget):
         # Always create the grid, as it's the core content
         thegrid = QGridLayout()
         
+        thescroller: QScrollArea|None = None
         if self._scrollable:
             # 1. Container for the grid
             container = QWidget()
@@ -366,6 +367,7 @@ class cGridWidget(QWidget):
 
         # Store the grid for external access
         self._grid: QGridLayout = thegrid
+        self._scroller: QScrollArea|None = thescroller
         
         # --- API Redirection ---
         # Note: You can also use a property or __getattr__ for a cleaner redirection,

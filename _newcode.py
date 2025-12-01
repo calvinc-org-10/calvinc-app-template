@@ -24,7 +24,7 @@ from cMenu.menucommand_constants import MENUCOMMANDS, COMMANDNUMBER
 from cMenu.utils import (
     recordsetList, 
     cQFmConstants, 
-    cComboBoxFromDict, cstdTabWidget,
+    cComboBoxFromDict, cstdTabWidget, cGridWidget,
     cQFmFldWidg, cSimpleRecordForm, cSimpleRecordForm_Base,
     pleaseWriteMe, areYouSure, 
     )
@@ -725,6 +725,8 @@ class EditMenuTest(cSimpleRecordForm):
         self.WmenuItm: Any = [None for bNum in range(_NUM_menuBUTTONS)]    # later - build WmenuItm before this loop?
 
         super().__init__(parent=parent)
+        self.layoutForm = self.dictFormLayouts.get('layoutForm')
+        assert isinstance(self.layoutForm, cGridWidget), "layoutForm is not a cGridWidget"
         
         # self.fldmenuGroup = self.fieldDefs['@MenuGroup_id'].get('widget') 
         self.fldmenuGroup = self._lookupFrmElements['@MenuGroup_id']
@@ -857,7 +859,12 @@ class EditMenuTest(cSimpleRecordForm):
 
         mItmH = self.WmenuItm[0].height()
         mItmW = self.WmenuItm[0].width()
+        padW = 70
+        multH = 1.5
+        # TODO: adjust scroller size based on number of items (do the line below)
         # self.layoutManinMenu_scrollerWidget.setMinimumSize(mItmW*2+10, mItmH)
+        assert isinstance(self.layoutForm, cGridWidget), "layoutForm is not a cGridWidget"
+        self.layoutForm._scroller.setMinimumSize(mItmW*2+padW, multH*mItmH)     # type: ignore
         
     # displayMenu
 
