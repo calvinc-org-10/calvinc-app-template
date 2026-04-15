@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (QApplication, QWidget,
 
 from forms import std_popdialogsize 
 
-from cMenu.utils import cQFmNameLabel
+from calvincTools.utils import cQFmNameLabel
 
 
 _DEFAULTDATE = date.today()

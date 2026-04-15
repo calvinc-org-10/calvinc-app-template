@@ -56,4 +56,4 @@ def get_app_sessionmaker():
 ###################    REPOSITORIES    ###################
 ##########################################################
 
-from cMenu.database import Repository
+from calvincTools.database import Repository
