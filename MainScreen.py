@@ -8,9 +8,12 @@ from PySide6.QtWidgets import (QWidget, QStackedWidget,
 
 from calvincTools.cMenu import cMenu
 from calvincTools import calvincTools_init
-from calvincTools.database import get_cMenu_sessionmaker
+# from calvincTools.database import get_cMenu_sessionmaker
 from calvincTools.usr_auth import (LoginForm, current_user)
-from calvincTools.usr_auth.models import User, User_usrauth_not_used
+from calvincTools.usr_auth.models import (
+    # User, 
+    User_usrauth_not_used, 
+    )
 
 from sysver import sysver, sysver_key, _appname
 
