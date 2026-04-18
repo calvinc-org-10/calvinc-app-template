@@ -31,7 +31,8 @@ class MainScreen(QWidget):
         if not self.objectName():
             self.setObjectName(u"MainWindow")
         
-        self.usr_auth=True
+        # set to True to require login, False to skip login and go straight to menu (for development/testing purposes)
+        self.usr_auth=False  
         
         calvincTools_init(
             usr_auth=False,     # to be deprecated

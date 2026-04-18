@@ -179,6 +179,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
-cMenudb.sqlite
-cMenudb.sqlite
