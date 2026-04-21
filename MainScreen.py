@@ -87,6 +87,7 @@ class MainScreen(QWidget):
             self.windowstack.setCurrentWidget(self.login_form)
         else:
             self.close()
+            # should this be go_to_menu() instead? or should we just skip the login form entirely if usr_auth is False?
         # endif usr_auth
     # go_to_login
 # MainScreen
