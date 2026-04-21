@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QWidget, QStackedWidget,
 from calvincTools.cMenu import cMenu
 from calvincTools import calvincTools_init
 # from calvincTools.database import get_cMenu_sessionmaker
-from calvincTools.usr_auth import (LoginForm, current_user)
+from calvincTools.usr_auth import (LoginForm, current_user, set_current_user, )
 from calvincTools.usr_auth.models import (
     # User, 
     User_usrauth_not_used, 
@@ -24,15 +24,13 @@ from app.database import get_app_sessionmaker
 
 
 class MainScreen(QWidget):
-    current_user = None 
-    
     def __init__(self, parent = None):
         super().__init__(parent)
         if not self.objectName():
             self.setObjectName(u"MainWindow")
         
         # set to True to require login, False to skip login and go straight to menu (for development/testing purposes)
-        self.usr_auth=True  
+        self.usr_auth=False
         
         calvincTools_init(
             usr_auth=False,     # to be deprecated
@@ -68,7 +66,7 @@ class MainScreen(QWidget):
         if self.usr_auth:
             self.go_to_login()
         else:
-            current_user = User_usrauth_not_used  # set to dummy user since we're not using authentication
+            set_current_user(User_usrauth_not_used)  # set to dummy user since we're not using authentication
             self.go_to_menu()
         # endif usr_auth
     # __init__
@@ -76,7 +74,8 @@ class MainScreen(QWidget):
     @Slot()
     def go_to_menu(self):
         self.windowstack.setCurrentWidget(self.menu_form)
-        mGroup = cMenu._DFLT_menuGroup if current_user is None else current_user.menuGroup  # type: ignore
+        cUsr = current_user()
+        mGroup = cMenu._DFLT_menuGroup if cUsr is None else cUsr.menuGroup  # type: ignore
         self.menu_form.loadMenu(mGroup)    # type: ignore
     # go_to_menu
 
