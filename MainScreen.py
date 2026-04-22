@@ -22,6 +22,12 @@ from externalWebPageURL_Map import ExternalWebPageURL_Map
 
 from app.database import get_app_sessionmaker
 
+from app_secrets import (
+    # DB connection info, API keys, etc.  Not included in version control for security reasons.
+    # also usr_auth settings like whether to require login, etc.  I mainly keep that there because I flip it a log while testing, but just flipping it shouldn't trigger a commit!
+    usr_auth_required,
+    )
+
 
 class MainScreen(QWidget):
     def __init__(self, parent = None):
@@ -30,10 +36,8 @@ class MainScreen(QWidget):
             self.setObjectName(u"MainWindow")
         
         # set to True to require login, False to skip login and go straight to menu (for development/testing purposes)
-        self.usr_auth=False
         
         calvincTools_init(
-            usr_auth=False,     # to be deprecated
             app_sessionmaker=get_app_sessionmaker(),
             FormNameToURL_Map=FormNameToURL_Map,
             ExternalWebPageURL_Map=ExternalWebPageURL_Map,
@@ -63,7 +67,7 @@ class MainScreen(QWidget):
         self.setWindowTitle(QCoreApplication.translate("MainWindow", _appname, None))
 
         # login, if usr_auth is True
-        if self.usr_auth:
+        if usr_auth_required:
             self.go_to_login()
         else:
             set_current_user(User_usrauth_not_used)  # set to dummy user since we're not using authentication
@@ -81,7 +85,7 @@ class MainScreen(QWidget):
 
     @Slot()
     def go_to_login(self):
-        if self.usr_auth:
+        if usr_auth_required:
             self.login_form.reset_fields()
             self.windowstack.setCurrentWidget(self.login_form)
         else:

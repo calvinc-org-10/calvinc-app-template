@@ -1,3 +1,9 @@
+# specific to apps which use calvincTools
+app_secrets.py
+app_secrets/
+templates/SQLhints.html
+templates/appNews.html
+
 requirements old.txt
 cMenudb.sqlite
 
