@@ -6,6 +6,7 @@ templates/appNews.html
 
 requirements old.txt
 cMenudb.sqlite
+appdb.sqlite
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
