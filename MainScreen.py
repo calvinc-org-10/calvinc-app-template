@@ -35,17 +35,16 @@ class MainScreen(QWidget):
         if not self.objectName():
             self.setObjectName(u"MainWindow")
         
-        # set to True to require login, False to skip login and go straight to menu (for development/testing purposes)
-        
-        calvincTools_init(
+        pixsize=100
+        cTools = calvincTools_init(
             app_sessionmaker=get_app_sessionmaker(),
             FormNameToURL_Map=FormNameToURL_Map,
             ExternalWebPageURL_Map=ExternalWebPageURL_Map,
             appname=_appname,
+            logo=QPixmap("F:/calvincTools/calvincTools/assets/cTools.png").scaled(pixsize, pixsize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation),
             appver=sysver[sysver_key],
             )
 
-        pixsize=100
         self.login_form = LoginForm(
             formname=_appname + " Login",
             logo=QPixmap("F:/calvincTools/calvincTools/assets/cTools.png").scaled(pixsize, pixsize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation),
