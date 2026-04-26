@@ -32,13 +32,6 @@ class MainScreen(QWidget):
             usr_auth=usr_auth_required,
             )
 
-        # self.login_form = cTools.login_form()
-        # self.login_form.login_successful.connect(self.go_to_menu)
-        # self.menu_form = cTools.menu_form()
-        # self.windowstack = cTools.main_window_stack()
-        # self.windowstack.addWidget(self.login_form)
-        # self.windowstack.addWidget(self.menu_form)
-
         llayout = QVBoxLayout(self)
         stack = cTools.main_window_stack()
         if stack is not None:
@@ -49,33 +42,7 @@ class MainScreen(QWidget):
 
         cTools.login()
         
-        # # login, if usr_auth is True
-        # if usr_auth_required:
-        #     self.go_to_login()
-        # else:
-        #     set_current_user(User_usrauth_not_used)  # set to dummy user since we're not using authentication
-        #     self.go_to_menu()
-        # endif usr_auth
     # __init__
-
-    @Slot()
-    # def go_to_menu(self):
-    #     self.windowstack.setCurrentWidget(self.menu_form)
-    #     cUsr = current_user()
-    #     mGroup = cMenu._DFLT_menuGroup if cUsr is None else cUsr.menuGroup  # type: ignore
-    #     self.menu_form.loadMenu(mGroup)    # type: ignore
-    # # go_to_menu
-
-    @Slot()
-    # def go_to_login(self):
-    #     if usr_auth_required:
-    #         self.login_form.reset_fields()
-    #         self.windowstack.setCurrentWidget(self.login_form)
-    #     else:
-    #         self.close()
-    #         # should this be go_to_menu() instead? or should we just skip the login form entirely if usr_auth is False?
-    #     # endif usr_auth
-    # # go_to_login
 # MainScreen
     def end_of_class(self):
         pass
