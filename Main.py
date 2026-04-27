@@ -22,12 +22,14 @@ class MainScreen(QWidget):
             self.setObjectName(u"MainWindow")
 
         pixsize=100
+        # applogo = QPixmap("F:/calvincTools/calvincTools/assets/cTools.png").scaled(pixsize, pixsize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation),
+        applogo = QPixmap()
         cTools = calvincTools(
             app_sessionmaker=get_app_sessionmaker(),
             FormNameToURL_Map=FormNameToURL_Map,
             ExternalWebPageURL_Map=ExternalWebPageURL_Map,
             appname=_appname,
-            logo=QPixmap("F:/calvincTools/calvincTools/assets/cTools.png").scaled(pixsize, pixsize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation),
+            logo=applogo,
             appver=sysver[sysver_key],
             usr_auth=usr_auth_required,
             )
