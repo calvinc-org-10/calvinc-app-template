@@ -1,1 +1,0 @@
-pragma table_list;

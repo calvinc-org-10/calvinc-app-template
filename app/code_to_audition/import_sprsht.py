@@ -5,9 +5,9 @@ from PySide6.QtWidgets import (QWidget,
     QPushButton, QLabel, QProgressBar, 
     )
 
-from calvincTools.utils import cExcelFile
+from calvincTools.utils import (cExcelFile, str2,)
 
-from database import get_app_sessionmaker
+from database import (get_app_sessionmaker, Repository, )
 from models import picklist
 
 
@@ -42,8 +42,10 @@ class test_spr_import(QWidget):
         layout.addWidget(self.conclusion)
 
     def import_spreadsheet(self):
-        excel_file = cExcelFile()
-        excel_file.load_from_file(self.tstFile)
+        excel_file = cExcelFile.load_from_file(self.tstFile)
+        if excel_file is None:
+            self.conclusion.setText("Import failed: could not load spreadsheet.")
+            return
         r = excel_file.save_to_SQLAlchemyModel(
             ssnmaker=self.ssnmakr,
             TargetModel=self.ORMModel,
@@ -52,6 +54,7 @@ class test_spr_import(QWidget):
             required_columns=["PartNumber", "PKNumber", "intQty"],
             progress_interval=30,
             progress_callback=self.update_progress,
+            validation_callback=self.validate_record,
             )
         self.conclusion.setText("Import completed successfully." if r else "Import failed.")
     
@@ -59,17 +62,36 @@ class test_spr_import(QWidget):
         SSFD = cExcelFile.SprdsheetFldDescriptor
         return {
             "Status": SSFD("status"),
-            "Priority": SSFD("finishDate", AllowedTypes=[date, None]), 
+            "Priority": SSFD("finishDate", AllowedTypes=(date, type(None))),
             "Part Number": SSFD("PartNumber"), 
             "PK/RP/RF": SSFD("PKNumber"), 
-            "WO/MR": SSFD("WONumber", AllowedTypes=[str, None]), 
-            "REQUESTOR": SSFD("Requestor", AllowedTypes=[str, None]), 
-            "init qty": SSFD("intQty", AllowedTypes=[int]), 
-            "remain qty": SSFD("remainQty", AllowedTypes=[int, None]), 
+            "WO/MR": SSFD("WONumber", AllowedTypes=(str, type(None)), CleanProc=self.none_to_str,), 
+            "REQUESTOR": SSFD("Requestor", AllowedTypes=(str, type(None))), 
+            "init qty": SSFD("intQty", AllowedTypes=(int, )), 
+            "remain qty": SSFD("remainQty", AllowedTypes=(int, type(None))), 
             "Sales Order #": SSFD("salesOrder"), 
             "Owner": SSFD("owner"), 
             "NOTES": SSFD("notes"),
             }
+    
+    def none_to_str(self, val) -> tuple[bool, str]:
+        return (True, str2(val))
+    
+    def validate_record(self, record_data) -> bool:
+        GPN = record_data.get("PartNumber")
+        PK = record_data.get("PKNumber")
+        qty = record_data.get("intQty")
+        
+        # sometimes an expression will come in for qty, so it won't get written to record_data; reject (clean?) those records
+        if qty is None:
+            return False
+            # later, we could try to evaluate the expression and if it resolves to an int, allow the record with that int value for qty
+        
+        if GPN is None or PK is None:
+            return False  # Let other validation rules handle missing required fields
+        whereclause = (self.ORMModel.PartNumber == GPN) & (self.ORMModel.PKNumber == PK)
+        existing_rec = Repository(self.ssnmakr, self.ORMModel).get_all(whereclause)
+        return len(existing_rec) == 0  # Valid if no existing record matches the PartNumber and PKNumber
     
     def update_progress(self, nPct, total):
         self.progress_bar.setMaximum(total)
