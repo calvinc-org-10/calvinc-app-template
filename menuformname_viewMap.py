@@ -2,7 +2,8 @@
 # import testforms
 from app import forms
 from app import forms_testing
-
+from app import code_to_audition
+from app.code_to_audition import import_sprsht
 # from _newcode import EditMenuTest
 
 # def LoadAdmin(parent):
@@ -33,5 +34,5 @@ FormNameToURL_Map = {}
 # FormNameToURL_Map['PickList'.lower()] = (None, forms_testing.PickListReport)
 
 # FormNameToURL_Map['WORecord'.lower()] = (None, forms.WorkOrdersRecord)
-# FormNameToURL_Map['WORecord_MP'.lower()] = (None, forms.WorkOrdersRecord_multipage)
+FormNameToURL_Map['test002'.lower()] = (None, import_sprsht.test_spr_import)
 
