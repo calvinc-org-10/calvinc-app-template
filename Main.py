@@ -13,7 +13,7 @@ from calvincTools.usr_auth.models import User_usrauth_not_used
 from externalWebPageURL_Map import ExternalWebPageURL_Map
 from menuformname_viewMap import FormNameToURL_Map
 from config import config
-from sysver import (_appname, sysver, sysver_key, )
+# from sysver import (_appname, sysver, sysver_key, )
 
 
 class MainScreen(QWidget):
@@ -48,7 +48,8 @@ class MainScreen(QWidget):
             llayout.addWidget(stack)
         self.setLayout(llayout)
 
-        self.setWindowTitle(QCoreApplication.translate("MainWindow", _appname, None))
+        appname = getattr(appConfig, 'APP_NAME', "App")
+        self.setWindowTitle(QCoreApplication.translate("MainWindow", appname, None))
 
         cTools.login()
         

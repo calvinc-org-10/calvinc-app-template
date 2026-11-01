@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 
 # import app
 import app_secrets
-from sysver import sysver
+from sysver import (sysver, _appname)
 from menuformname_viewMap import FormNameToURL_Map
 from externalWebPageURL_Map import ExternalWebPageURL_Map
 
@@ -18,7 +18,7 @@ class Config:
 
     # app specific
     DEV_MODE = app_secrets.sysver_key == 'DEV'
-    APP_NAME = "App"
+    APP_NAME = _appname
     APP_VERSION = sysver[app_secrets.sysver_key]
     APP_LOGO_URL = getattr(app_secrets, 'app_logo', "F:/calvincTools/calvincTools/assets/cTools.png")
     APP_LOGO:Any = None    # will be set after class creation
