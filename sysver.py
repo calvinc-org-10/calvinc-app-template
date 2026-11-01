@@ -2,8 +2,9 @@ _appname='Calvin C app prototype'
 _base_ver_major=1
 _base_ver_minor=2
 _base_ver_patch=0
-_ver_date='2025-11-30'
-_base_ver = f'{_base_ver_major}.{_base_ver_minor}.{_base_ver_patch}'
+_ver_date='2026-10-31-2100'
+# _base_ver = f'{_base_ver_major}.{_base_ver_minor}.{_base_ver_patch}'
+_base_ver = _ver_date
 sysver = {
     'DEV': f'DEV{_base_ver}', 
     'PROD': _base_ver,

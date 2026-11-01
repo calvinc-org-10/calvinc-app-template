@@ -6,20 +6,23 @@ rootdir = "."
 app_dbName = f"{rootdir}/appdb.sqlite"
 
 # Create SQLite database engine
-engine = create_engine(
-    f'sqlite:///{app_dbName}', 
-    echo=False
+# which the Session will use for connection
+# resources, typically in module scope
+app_engine = create_engine(
+    f"sqlite:///{app_dbName}",
     )
+# a sessionmaker(), also in the same scope as the engine
+_app_Session = sessionmaker(app_engine)
 
 # Create all tables in the database
-pickModelBase.metadata.create_all(engine)
+pickModelBase.metadata.create_all(app_engine)
 
 # Create a customized Session class
-Session = sessionmaker(bind=engine)
+_app_session = sessionmaker(bind=app_engine)
 
 def get_app_session():
-    return Session()
+    return _app_session()
 def get_app_sessionmaker():
-    return Session
+    return _app_session
 
 from calvincTools.database import Repository
