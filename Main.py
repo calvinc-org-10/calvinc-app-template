@@ -12,7 +12,7 @@ from calvincTools import calvincTools, CallerContext
 from calvincTools.usr_auth.models import User_usrauth_not_used
 from externalWebPageURL_Map import ExternalWebPageURL_Map
 from menuformname_viewMap import FormNameToURL_Map
-from config import config
+from config import (config, appConfig)
 # from sysver import (_appname, sysver, sysver_key, )
 
 

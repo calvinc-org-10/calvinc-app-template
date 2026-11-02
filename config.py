@@ -22,7 +22,7 @@ class Config:
     APP_VERSION = sysver[app_secrets.sysver_key]
     APP_LOGO_URL = getattr(app_secrets, 'app_logo', "F:/calvincTools/calvincTools/assets/cTools.png")
     APP_LOGO:Any = None    # will be set after class creation
-    APP_NEWS_HTMLFILE = 'appNews.html'
+    APP_NEWS_FILE = 'F:/calvinc-app-template/assets/files/' + 'appNews.md'
     FORMNAME_TO_URL_MAP = FormNameToURL_Map
     EXTERNAL_WEBPAGE_URL_MAP = ExternalWebPageURL_Map
     STARTUP_URL = getattr(app_secrets, 'startup_URL', '/WICS')  # needed????
@@ -87,3 +87,6 @@ config = {
     'production': ProductionConfig,
     'testing': TestingConfig,
 }
+
+appConfig:Any = None
+
