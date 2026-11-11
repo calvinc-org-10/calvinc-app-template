@@ -3,6 +3,7 @@ app_secrets.py
 app_secrets/
 templates/SQLhints.html
 templates/appNews.html
+appNews.md
 
 requirements old.txt
 cMenudb.sqlite

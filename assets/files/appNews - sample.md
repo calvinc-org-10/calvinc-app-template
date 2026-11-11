@@ -9,5 +9,3 @@ This is **bold** text, and this is *italic*.
 * Basic [links](https://qt.io)
 """
 
-calvinc111
-TempPassword123
